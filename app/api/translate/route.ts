@@ -28,11 +28,16 @@ export async function POST(req: NextRequest) {
   );
 
   if (!res.ok) {
-    console.error("Google Translate error:", await res.text());
-    return NextResponse.json(
-      { error: "Translate request failed" },
-      { status: 502 },
-    );
+    const raw = await res.text();
+    console.error("Google Translate error:", raw);
+    let message = `翻訳API エラー (${res.status})`;
+    try {
+      const parsed = JSON.parse(raw) as { error?: { message?: string } };
+      if (parsed.error?.message) message = parsed.error.message;
+    } catch {
+      // keep default message
+    }
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 
   const data = (await res.json()) as {

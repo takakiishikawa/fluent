@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { cn } from "@takaki/go-design-system";
+import { cn, toast } from "@takaki/go-design-system";
 import type { Language, WordNote } from "@/lib/types";
 import {
   ChevronLeft,
@@ -517,15 +517,27 @@ export function RepeatingSession({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ texts: lines.map(stripSpeaker) }),
     })
-      .then((r) => r.json())
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d?.error || `翻訳API エラー (${r.status})`);
+        return d as { translations?: string[] };
+      })
       .then((d) => {
         if (cancelled) return;
         if (Array.isArray(d.translations) && d.translations.length > 0) {
           cacheRef.current.set(linesKey, d.translations);
           setJa({ key: linesKey, lines: d.translations });
+        } else {
+          throw new Error("翻訳結果が空です");
         }
       })
-      .catch(() => {})
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          toast.error(
+            `翻訳エラー: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+      })
       .finally(() => {
         if (!cancelled) setJaLoading(false);
       });
