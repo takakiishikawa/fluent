@@ -1008,14 +1008,14 @@ export default function ListPage() {
           .eq("language", language)
           .is("pattern_quote", null)
           .lt("play_count", 10)
-          .limit(30),
+          .limit(100),
         supabase
           .from("expressions")
           .select("id")
           .eq("language", language)
           .is("pattern_quote", null)
           .lt("play_count", 10)
-          .limit(30),
+          .limit(100),
       ]);
       type Task = { kind: "grammar" | "expression"; id: string };
       const tasks: Task[] = [
@@ -1027,7 +1027,7 @@ export default function ListPage() {
           kind: "expression" as const,
           id: r.id,
         })),
-      ].slice(0, 30);
+      ].slice(0, 100);
       if (tasks.length === 0) {
         toast.info("判定対象がありません");
         return;
@@ -1076,7 +1076,7 @@ export default function ListPage() {
               <Button
                 variant="outline"
                 onClick={handleDetectPatterns}
-                title="会話内の文法・フレーズの該当箇所を AI で判定（30件ずつ）"
+                title="会話内の文法・フレーズの該当箇所を AI で判定（100件ずつ）"
               >
                 <Sparkles className="mr-1.5 h-4 w-4" />
                 パターン判定（残り{patternMissing}）
