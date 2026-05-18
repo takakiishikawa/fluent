@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   Button,
-  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -13,10 +12,16 @@ import {
   Input,
   Label,
   Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Textarea,
   toast,
 } from "@takaki/go-design-system";
-import { Star, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import {
   saveGrammar,
   saveExpressions,
@@ -28,7 +33,6 @@ import type {
   ExtractedGrammar,
   ExtractedWord,
 } from "@/lib/types";
-import { WordNotesInline } from "@/components/word-notes";
 import { CategoryTag } from "@/components/category-tag";
 
 type WithPriority<T> = T & { is_priority: boolean };
@@ -45,35 +49,6 @@ const PLACEHOLDER = `学習したいテキストをそのまま貼り付けて�
 レッスンの宿題・教材・例文など、何でも OK です。
 
 AI が内容を文法・フレーズ・単語に仕分けし、それぞれに練習用の会話例と解説を付けて生成します。`;
-
-function PriorityStar({
-  active,
-  onToggle,
-}: {
-  active: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label={active ? "強化を外す" : "強化に追加"}
-      className={cn(
-        "inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-        active
-          ? "text-[color:var(--color-warning)] hover:bg-[color:var(--color-warning)]/10"
-          : "text-muted-foreground/40 hover:text-[color:var(--color-warning)] hover:bg-muted",
-      )}
-    >
-      <Star
-        className={cn(
-          "h-4 w-4",
-          active && "fill-[var(--color-warning)]",
-        )}
-      />
-    </button>
-  );
-}
 
 export function ViAddModal({
   onClose,
@@ -233,31 +208,6 @@ export function ViAddModal({
     setSourceTitle("");
   }
 
-  function togglePriority(
-    setter: "grammar" | "expressions" | "words",
-    idx: number,
-  ) {
-    if (setter === "grammar") {
-      setGrammar((prev) =>
-        prev.map((it, i) =>
-          i === idx ? { ...it, is_priority: !it.is_priority } : it,
-        ),
-      );
-    } else if (setter === "expressions") {
-      setExpressions((prev) =>
-        prev.map((it, i) =>
-          i === idx ? { ...it, is_priority: !it.is_priority } : it,
-        ),
-      );
-    } else {
-      setWords((prev) =>
-        prev.map((it, i) =>
-          i === idx ? { ...it, is_priority: !it.is_priority } : it,
-        ),
-      );
-    }
-  }
-
   return (
     <Dialog
       open
@@ -328,11 +278,9 @@ export function ViAddModal({
 
               <p className="text-sm text-muted-foreground">
                 文法 {grammar.length}件・フレーズ {expressions.length}件・単語{" "}
-                {words.length}件を抽出しました。{" "}
-                <Star className="inline h-3.5 w-3.5 align-text-bottom" />{" "}
-                で強化フラグ、{" "}
+                {words.length}件を抽出しました。不要な行は{" "}
                 <Trash2 className="inline h-3.5 w-3.5 align-text-bottom" />{" "}
-                で削除。
+                で削除してから追加してください。
               </p>
 
               {grammar.length > 0 && (
@@ -340,51 +288,29 @@ export function ViAddModal({
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                     文法 ({grammar.length})
                   </Label>
-                  <div className="rounded-md border overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
-                        <tr>
-                          <th className="w-10 px-2 py-2 text-left">強化</th>
-                          <th className="text-left px-3 py-2 font-medium w-[100px]">
-                            種別
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium w-[180px]">
-                            文法名
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium">
-                            概要
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium w-[260px]">
-                            単語
-                          </th>
-                          <th className="w-10" />
-                        </tr>
-                      </thead>
-                      <tbody>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[110px]">種別</TableHead>
+                          <TableHead className="w-[200px]">文法名</TableHead>
+                          <TableHead>概要</TableHead>
+                          <TableHead className="w-10" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {grammar.map((g, i) => (
-                          <tr
-                            key={`g-${i}`}
-                            className="border-t align-top hover:bg-muted/30"
-                          >
-                            <td className="px-2 py-2">
-                              <PriorityStar
-                                active={g.is_priority}
-                                onToggle={() => togglePriority("grammar", i)}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
+                          <TableRow key={`g-${i}`} className="align-top">
+                            <TableCell>
                               <CategoryTag category={g.category} />
-                            </td>
-                            <td className="px-3 py-2 font-medium text-[color:var(--color-grammar)]">
+                            </TableCell>
+                            <TableCell className="font-medium text-[color:var(--color-grammar)]">
                               {g.name}
-                            </td>
-                            <td className="px-3 py-2 text-muted-foreground">
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
                               {g.summary}
-                            </td>
-                            <td className="px-3 py-2">
-                              <WordNotesInline notes={g.word_notes} />
-                            </td>
-                            <td className="px-3 py-2">
+                            </TableCell>
+                            <TableCell>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -398,11 +324,11 @@ export function ViAddModal({
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               )}
@@ -412,59 +338,33 @@ export function ViAddModal({
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                     フレーズ ({expressions.length})
                   </Label>
-                  <div className="rounded-md border overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
-                        <tr>
-                          <th className="w-10 px-2 py-2 text-left">強化</th>
-                          <th className="text-left px-3 py-2 font-medium w-[100px]">
-                            種別
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium w-[180px]">
-                            フレーズ
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium">
-                            意味
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium">
-                            ニュアンス
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium w-[240px]">
-                            単語
-                          </th>
-                          <th className="w-10" />
-                        </tr>
-                      </thead>
-                      <tbody>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[110px]">種別</TableHead>
+                          <TableHead className="w-[200px]">フレーズ</TableHead>
+                          <TableHead>意味</TableHead>
+                          <TableHead>ニュアンス</TableHead>
+                          <TableHead className="w-10" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {expressions.map((e, i) => (
-                          <tr
-                            key={`e-${i}`}
-                            className="border-t align-top hover:bg-muted/30"
-                          >
-                            <td className="px-2 py-2">
-                              <PriorityStar
-                                active={e.is_priority}
-                                onToggle={() =>
-                                  togglePriority("expressions", i)
-                                }
-                              />
-                            </td>
-                            <td className="px-3 py-2">
+                          <TableRow key={`e-${i}`} className="align-top">
+                            <TableCell>
                               <CategoryTag category={e.category} />
-                            </td>
-                            <td className="px-3 py-2 font-medium text-[color:var(--color-phrase)]">
+                            </TableCell>
+                            <TableCell className="font-medium text-[color:var(--color-phrase)]">
                               {e.expression}
-                            </td>
-                            <td className="px-3 py-2 text-muted-foreground">
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
                               {e.meaning}
-                            </td>
-                            <td className="px-3 py-2 text-xs text-muted-foreground">
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
                               {e.nuance ?? "—"}
-                            </td>
-                            <td className="px-3 py-2">
-                              <WordNotesInline notes={e.word_notes} />
-                            </td>
-                            <td className="px-3 py-2">
+                            </TableCell>
+                            <TableCell>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -478,11 +378,11 @@ export function ViAddModal({
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               )}
@@ -492,43 +392,29 @@ export function ViAddModal({
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                     単語 ({words.length})
                   </Label>
-                  <div className="rounded-md border overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
-                        <tr>
-                          <th className="w-10 px-2 py-2 text-left">強化</th>
-                          <th className="text-left px-3 py-2 font-medium w-[120px]">
-                            カテゴリ
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium w-[160px]">
-                            単語
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium">
-                            意味
-                          </th>
-                          <th className="w-10" />
-                        </tr>
-                      </thead>
-                      <tbody>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[130px]">カテゴリ</TableHead>
+                          <TableHead className="w-[180px]">単語</TableHead>
+                          <TableHead>意味</TableHead>
+                          <TableHead className="w-10" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {words.map((w, i) => (
-                          <tr
-                            key={`w-${i}`}
-                            className="border-t align-top hover:bg-muted/30"
-                          >
-                            <td className="px-2 py-2">
-                              <PriorityStar
-                                active={w.is_priority}
-                                onToggle={() => togglePriority("words", i)}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
+                          <TableRow key={`w-${i}`} className="align-top">
+                            <TableCell>
                               <CategoryTag category={w.category} />
-                            </td>
-                            <td className="px-3 py-2 font-medium">{w.word}</td>
-                            <td className="px-3 py-2 text-muted-foreground">
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {w.word}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
                               {w.meaning}
-                            </td>
-                            <td className="px-3 py-2">
+                            </TableCell>
+                            <TableCell>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -542,11 +428,11 @@ export function ViAddModal({
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               )}

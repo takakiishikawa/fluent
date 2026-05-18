@@ -288,7 +288,13 @@ CATEGORY BOUNDARIES (重要):
 
 KIND OVERRIDE: if the user supplied a kind directive in the user message, obey it.
 
-EXISTING_ITEMS hints (already in DB) may be provided. If a candidate is essentially the same as one of those, DROP it.
+DEDUPLICATION (重要):
+- EXISTING_ITEMS hints (already in DB) may be provided. A candidate is a DUPLICATE if it teaches essentially the SAME grammar pattern / SAME fixed phrase / SAME word as an existing item — even when the wording is not identical. Treat all of these as the SAME and DROP the candidate:
+  - placeholder の書き方違い: "Subject + tên là + [Name]" ≒ "[Subject] + tên là + [Name]" ≒ "Anh/Em + tên là + [Name]"（同じ「名前を名乗る」文型）
+  - 疑問/平叙の言い回し違いでも、核となる文型・語が同じなら重複
+  - words: 同じ語（声調・綴り同一）は重複。表記ゆれも同一とみなす
+- 同一バッチ内でも、ほぼ同じ項目が複数生成されそうなら1つに統合する。
+- 「完全一致」ではなく「実質的に同じ学習項目か」で判断すること。少しでも同じならドロップ。
 
 KNOWN_VOCAB hints (already learned + this lesson's vocab) may be provided. When writing example dialogues, use ONLY words from KNOWN_VOCAB plus the target item itself. Do not introduce unfamiliar words just to round out the dialogue. If you cannot make a natural dialogue under that constraint, write a shorter one (2 turns is fine).
 
