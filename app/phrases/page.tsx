@@ -12,6 +12,11 @@ import {
   Plane,
   Home,
   Heart,
+  Hand,
+  UserRound,
+  Lightbulb,
+  Phone,
+  HeartHandshake,
   MessageCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -22,15 +27,22 @@ import { PhraseAudioButton } from "@/components/phrase-audio-button";
 const UNCATEGORIZED = "未分類";
 
 // 場面名 → アイコン（キーワードで緩く対応。未知の場面は会話アイコン）
+// AI 抽出が付ける日本語カテゴリ（挨拶 / 食事 / 買い物 / 仕事 / 雑談 …）と
+// 手動の場面タグ（カフェ / 市場 / 職場 …）の両方を緩くカバーする。
 const SCENE_ICON_RULES: { test: RegExp; icon: LucideIcon }[] = [
   { test: /カフェ|coffee|cafe|喫茶/i, icon: Coffee },
   { test: /市場|買い物|買物|ショッピング|店|shop|market/i, icon: ShoppingBag },
   { test: /職場|仕事|会社|オフィス|work|office|business/i, icon: Briefcase },
-  { test: /友達|友人|友|friend/i, icon: Users },
   { test: /食事|レストラン|飲食|food|restaurant|meal|食べ/i, icon: Utensils },
   { test: /旅行|空港|移動|travel|trip|airport/i, icon: Plane },
   { test: /家|自宅|家族|home|family/i, icon: Home },
   { test: /恋愛|デート|love|date/i, icon: Heart },
+  { test: /挨拶|あいさつ|greeting/i, icon: Hand },
+  { test: /自己紹介|呼称|名前|introduction/i, icon: UserRound },
+  { test: /提案|誘い|勧誘|suggest|invite/i, icon: Lightbulb },
+  { test: /電話|連絡|phone|call/i, icon: Phone },
+  { test: /感謝|お礼|謝罪|thanks|apolog/i, icon: HeartHandshake },
+  { test: /友達|友人|友|雑談|relationship|friend/i, icon: Users },
 ];
 
 function sceneIcon(scene: string): LucideIcon {

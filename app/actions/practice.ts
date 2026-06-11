@@ -507,6 +507,7 @@ export async function saveExpressions(
   if (error) throw error;
   revalidatePath("/list");
   revalidatePath("/texts");
+  revalidatePath("/phrases");
 }
 
 export async function saveWords(
