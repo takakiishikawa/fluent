@@ -563,6 +563,7 @@ export async function saveWords(
   const { error } = await supabase.from("words").insert(rows);
   if (error) throw error;
   revalidatePath("/list");
+  revalidatePath("/phrases");
   return { inserted: filtered.length, skipped };
 }
 
