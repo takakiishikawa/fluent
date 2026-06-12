@@ -17,7 +17,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Grammar, Expression, Word } from "@/lib/types";
 import { useCurrentLanguage } from "@/lib/language-context";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import { Plus, Trash2, Sparkles, Check } from "lucide-react";
 import { ViAddModal } from "@/components/vi-add-modal";
 import { SceneTag } from "@/components/scene-tag";
 import { NoteCell } from "@/components/note-cell";
@@ -93,9 +93,13 @@ function PlayCountStatusSummary({
 function PlayCount({ count, max = 10 }: { count: number; max?: number }) {
   if (count >= max) {
     return (
-      <Badge className="border-transparent bg-[color:var(--color-success-subtle)] text-[color:var(--color-success)]">
-        完了
-      </Badge>
+      <span
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--color-success-subtle)] text-[color:var(--color-success)]"
+        aria-label="完了"
+        title="完了"
+      >
+        <Check className="h-4 w-4" />
+      </span>
     );
   }
   return (

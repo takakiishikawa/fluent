@@ -9,7 +9,7 @@ import {
   Textarea,
   toast,
 } from "@takaki/go-design-system";
-import { StickyNote, Plus, Check } from "lucide-react";
+import { MessageSquare, MessageSquareText, Check } from "lucide-react";
 import { setItemNote } from "@/app/actions/practice";
 
 type Kind = "grammar" | "expression" | "word";
@@ -64,21 +64,13 @@ export function NoteCell({
         <button
           type="button"
           aria-label={value ? "メモを編集" : "メモを追加"}
-          className="inline-flex max-w-[180px] items-center rounded-md transition-opacity hover:opacity-70"
+          title={value ?? "メモを追加"}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-muted"
         >
           {value ? (
-            <span
-              title={value}
-              className="inline-flex max-w-[180px] items-center gap-1 rounded-md bg-[var(--color-primary)]/10 px-1.5 py-0.5 text-xs text-[color:var(--color-primary)]"
-            >
-              <StickyNote className="h-3 w-3 shrink-0" />
-              <span className="truncate">{value}</span>
-            </span>
+            <MessageSquareText className="h-4 w-4 text-[color:var(--color-primary)]" />
           ) : (
-            <span className="inline-flex items-center gap-0.5 rounded-md border border-dashed border-border px-1.5 py-0.5 text-xs text-muted-foreground">
-              <Plus className="h-3 w-3" />
-              メモ
-            </span>
+            <MessageSquare className="h-4 w-4 text-muted-foreground/40" />
           )}
         </button>
       </PopoverTrigger>
