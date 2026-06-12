@@ -426,7 +426,6 @@ export async function saveGrammar(
     frequency: number;
     word_notes?: WordNote[] | null;
     category?: string | null;
-    is_priority?: boolean;
     source_title?: string | null;
     topic?: ItemTopic | null;
   }[],
@@ -447,7 +446,6 @@ export async function saveGrammar(
     language,
     word_notes: g.word_notes ?? null,
     category: g.category ?? null,
-    is_priority: g.is_priority ?? false,
     source_title: g.source_title ?? null,
     topic_label: g.topic?.label ?? null,
     topic_icon: g.topic?.icon ?? null,
@@ -475,7 +473,6 @@ export async function saveExpressions(
     word_notes?: WordNote[] | null;
     nuance?: string | null;
     pattern_quote?: string | null;
-    is_priority?: boolean;
     source_title?: string | null;
     topic?: ItemTopic | null;
   }[],
@@ -496,7 +493,6 @@ export async function saveExpressions(
     language,
     word_notes: e.word_notes ?? null,
     nuance: e.nuance ?? null,
-    is_priority: e.is_priority ?? false,
     source_title: e.source_title ?? null,
     topic_label: e.topic?.label ?? null,
     topic_icon: e.topic?.icon ?? null,
@@ -518,7 +514,6 @@ export async function saveWords(
     usage_scene?: string | null;
     frequency: number;
     word_notes?: WordNote[] | null;
-    is_priority?: boolean;
     source_title?: string | null;
     category?: string | null;
     topic?: ItemTopic | null;
@@ -553,7 +548,6 @@ export async function saveWords(
     lesson_id: lessonId ?? null,
     language,
     word_notes: w.word_notes ?? null,
-    is_priority: w.is_priority ?? false,
     source_title: w.source_title ?? null,
     category: w.category ?? null,
     topic_label: w.topic?.label ?? null,
@@ -581,89 +575,16 @@ export async function deleteWord(id: string) {
   revalidatePath("/list");
 }
 
-export async function toggleGrammarPriority(id: string, next: boolean) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("grammar")
-    .update({ is_priority: next })
-    .eq("id", id);
-  if (error) throw error;
-  revalidatePath("/list");
-}
-
-export async function toggleExpressionPriority(id: string, next: boolean) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("expressions")
-    .update({ is_priority: next })
-    .eq("id", id);
-  if (error) throw error;
-  revalidatePath("/list");
-}
-
-export async function toggleWordPriority(id: string, next: boolean) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("words")
-    .update({ is_priority: next })
-    .eq("id", id);
-  if (error) throw error;
-  revalidatePath("/list");
-}
-
-// ── 「学習したい」リスト ───────────────────────────────────────────────
-type StudyKind = "grammar" | "expression" | "word";
-const STUDY_TABLE: Record<StudyKind, string> = {
+// ── 場面タグ（category）─ ライブラリで手動設定。/phrases の場面チップに使う ──
+type ItemKind = "grammar" | "expression" | "word";
+const ITEM_TABLE: Record<ItemKind, string> = {
   grammar: "grammar",
   expression: "expressions",
   word: "words",
 };
 
-export async function setStudyFlag(
-  kind: StudyKind,
-  id: string,
-  value: boolean,
-) {
-  const supabase = await createClient();
-  // フラグを外したら完了状態もリセット
-  const patch = value
-    ? { study_flag: true }
-    : { study_flag: false, study_done: false };
-  const { error } = await supabase
-    .from(STUDY_TABLE[kind])
-    .update(patch)
-    .eq("id", id);
-  if (error) throw error;
-  revalidatePath("/list");
-}
-
-export async function setStudyDone(
-  kind: StudyKind,
-  id: string,
-  value: boolean,
-) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from(STUDY_TABLE[kind])
-    .update({ study_done: value })
-    .eq("id", id);
-  if (error) throw error;
-  revalidatePath("/list");
-}
-
-export async function setStudyNote(kind: StudyKind, id: string, note: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from(STUDY_TABLE[kind])
-    .update({ study_note: note.trim() || null })
-    .eq("id", id);
-  if (error) throw error;
-  revalidatePath("/list");
-}
-
-// ── 場面タグ（category）─ ライブラリで手動設定。/phrases の場面チップに使う ──
 export async function setItemCategory(
-  kind: StudyKind,
+  kind: ItemKind,
   id: string,
   category: string,
 ) {
@@ -673,7 +594,7 @@ export async function setItemCategory(
   // grammar / words は nullable なので null にする。
   const value = kind === "expression" ? trimmed : trimmed || null;
   const { error } = await supabase
-    .from(STUDY_TABLE[kind])
+    .from(ITEM_TABLE[kind])
     .update({ category: value })
     .eq("id", id);
   if (error) throw error;

@@ -35,8 +35,6 @@ import type {
 } from "@/lib/types";
 import { CategoryTag } from "@/components/category-tag";
 
-type WithPriority<T> = T & { is_priority: boolean };
-
 const LOADING_STEPS = [
   "入力を解析中...",
   "文法・フレーズ・単語を仕分け中...",
@@ -61,11 +59,9 @@ export function ViAddModal({
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [grammar, setGrammar] = useState<WithPriority<ExtractedGrammar>[]>([]);
-  const [expressions, setExpressions] = useState<
-    WithPriority<ExtractedExpression>[]
-  >([]);
-  const [words, setWords] = useState<WithPriority<ExtractedWord>[]>([]);
+  const [grammar, setGrammar] = useState<ExtractedGrammar[]>([]);
+  const [expressions, setExpressions] = useState<ExtractedExpression[]>([]);
+  const [words, setWords] = useState<ExtractedWord[]>([]);
   const [sourceTitle, setSourceTitle] = useState("");
   const [hasResult, setHasResult] = useState(false);
 
@@ -97,15 +93,9 @@ export function ViAddModal({
       });
       if (!res.ok) throw new Error();
       const data = (await res.json()) as ExtractResult;
-      setGrammar(
-        (data.grammar ?? []).map((g) => ({ ...g, is_priority: false })),
-      );
-      setExpressions(
-        (data.expressions ?? []).map((e) => ({ ...e, is_priority: false })),
-      );
-      setWords(
-        (data.words ?? []).map((w) => ({ ...w, is_priority: false })),
-      );
+      setGrammar(data.grammar ?? []);
+      setExpressions(data.expressions ?? []);
+      setWords(data.words ?? []);
       setSourceTitle(data.source_title ?? "");
       setHasResult(true);
     } catch {

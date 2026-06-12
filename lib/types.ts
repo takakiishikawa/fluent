@@ -35,14 +35,10 @@ export interface Grammar {
   language: Language;
   word_notes: WordNote[] | null;
   category: string | null;
-  is_priority: boolean;
   source_title: string | null;
   topic_label: string | null;
   topic_icon: string | null;
   pattern_quote: string | null;
-  study_flag: boolean;
-  study_done: boolean;
-  study_note: string | null;
 }
 
 export interface Expression {
@@ -61,14 +57,10 @@ export interface Expression {
   language: Language;
   word_notes: WordNote[] | null;
   nuance: string | null;
-  is_priority: boolean;
   source_title: string | null;
   topic_label: string | null;
   topic_icon: string | null;
   pattern_quote: string | null;
-  study_flag: boolean;
-  study_done: boolean;
-  study_note: string | null;
 }
 
 export interface Word {
@@ -84,14 +76,10 @@ export interface Word {
   created_at: string;
   lesson_id: string | null;
   language: Language;
-  is_priority: boolean;
   source_title: string | null;
   category: string | null;
   topic_label: string | null;
   topic_icon: string | null;
-  study_flag: boolean;
-  study_done: boolean;
-  study_note: string | null;
 }
 
 export interface Lesson {

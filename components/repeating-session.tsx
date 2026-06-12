@@ -1,14 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  cn,
-  toast,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@takaki/go-design-system";
+import { cn, toast } from "@takaki/go-design-system";
 import type { Language, WordNote } from "@/lib/types";
 import {
   ChevronLeft,
@@ -18,8 +11,6 @@ import {
   Star,
   X,
   Languages,
-  Flag,
-  MessageSquareText,
   ChefHat,
   Briefcase,
   Plane,
@@ -46,10 +37,6 @@ import {
 } from "lucide-react";
 
 const SPEEDS = [0.6, 0.8, 1.0, 1.2] as const;
-
-// 黒背景ツールチップ（アクティビティヒートマップと統一）
-const TOOLTIP_CLS =
-  "bg-[#1f1d1a] text-[12px] text-white dark:bg-[#2a2833] dark:text-[#f0eef4]";
 
 const TOPIC_ICON_MAP: Record<string, LucideIcon> = {
   "chef-hat": ChefHat,
@@ -187,64 +174,6 @@ function TopicChip({ label, icon }: { label: string; icon: string | null }) {
       </span>
       <span className="text-sm font-semibold text-foreground">{label}</span>
     </span>
-  );
-}
-
-// ─── Study controls — flag toggle (+ tooltip) + memo (tooltip) ──────
-function StudyControls({
-  studyFlag,
-  onToggleStudyFlag,
-  studyNote,
-}: {
-  studyFlag: boolean;
-  onToggleStudyFlag: () => void;
-  studyNote?: string | null;
-}) {
-  return (
-    <TooltipProvider delayDuration={150}>
-      <span className="inline-flex items-center gap-1.5">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={onToggleStudyFlag}
-              aria-pressed={studyFlag}
-              className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-full border transition-colors",
-                studyFlag
-                  ? "border-[color:var(--color-primary)] bg-[var(--color-primary)]/10 text-[color:var(--color-primary)]"
-                  : "border-border text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Flag className={cn("h-4 w-4", studyFlag && "fill-current")} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className={cn("max-w-[240px]", TOOLTIP_CLS)}>
-            {studyFlag
-              ? "「学習したい」リストに登録済み。クリックで解除します。"
-              : "外部で学習したい文法・フレーズの目印。ライブラリの「学習したい」リストに表示されます。"}
-          </TooltipContent>
-        </Tooltip>
-        {studyNote && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground">
-                <MessageSquareText className="h-4 w-4" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent
-              side="top"
-              className={cn(
-                "max-w-[260px] whitespace-pre-wrap text-left",
-                TOOLTIP_CLS,
-              )}
-            >
-              {studyNote}
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </span>
-    </TooltipProvider>
   );
 }
 
@@ -509,9 +438,6 @@ export type RepeatingSessionProps = {
   currentLine: number;
   wordNotes?: WordNote[] | null;
   patternQuote?: string | null;
-  studyFlag: boolean;
-  onToggleStudyFlag: () => void;
-  studyNote?: string | null;
   playCount: number;
   sessionCurrent: number;
   sessionTotal: number;
@@ -539,9 +465,6 @@ export function RepeatingSession({
   currentLine,
   wordNotes,
   patternQuote,
-  studyFlag,
-  onToggleStudyFlag,
-  studyNote,
   playCount,
   sessionCurrent,
   sessionTotal,
@@ -656,16 +579,9 @@ export function RepeatingSession({
             <div className="mb-2 flex justify-center">
               <Stars value={importance} />
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-2.5">
-              <h1 className="text-[28px] font-bold leading-tight tracking-tight text-foreground">
-                {title}
-              </h1>
-              <StudyControls
-                studyFlag={studyFlag}
-                onToggleStudyFlag={onToggleStudyFlag}
-                studyNote={studyNote}
-              />
-            </div>
+            <h1 className="text-[28px] font-bold leading-tight tracking-tight text-foreground">
+              {title}
+            </h1>
             {summary && (
               <p className="mx-auto mt-2.5 max-w-[600px] text-sm leading-relaxed text-muted-foreground">
                 {summary}

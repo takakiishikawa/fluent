@@ -4,10 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@takaki/go-design-system";
-import {
-  incrementExpressionPlayCount,
-  setStudyFlag,
-} from "@/app/actions/practice";
+import { incrementExpressionPlayCount } from "@/app/actions/practice";
 import { useCurrentLanguage } from "@/lib/language-context";
 import type { Expression } from "@/lib/types";
 import { CheckCircle2, ArrowRight } from "lucide-react";
@@ -294,22 +291,6 @@ export default function ExpressionRepeatingPage() {
     return () => window.removeEventListener("keydown", onKeydown);
   }, [sessionStarted, showComplete, playing, handlePlay, stopSpeech]);
 
-  async function handleToggleStudyFlag(item: Expression) {
-    const next = !item.study_flag;
-    setItems((prev) =>
-      prev.map((it) => (it.id === item.id ? { ...it, study_flag: next } : it)),
-    );
-    try {
-      await setStudyFlag("expression", item.id, next);
-    } catch {
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === item.id ? { ...it, study_flag: !next } : it,
-        ),
-      );
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -346,9 +327,6 @@ export default function ExpressionRepeatingPage() {
         language={language}
         kindLabel="フレーズ"
         title={current.expression}
-        studyFlag={current.study_flag}
-        onToggleStudyFlag={() => handleToggleStudyFlag(current)}
-        studyNote={current.study_note}
         summary={current.meaning?.replace(/\\n/g, " ")}
         importance={current.frequency}
         topicLabel={current.topic_label}
