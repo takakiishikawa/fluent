@@ -35,3 +35,7 @@ CREATE POLICY "Users can delete own output_topics"
 
 CREATE INDEX IF NOT EXISTS idx_output_topics_user_lang
   ON nativego.output_topics(user_id, language, created_at DESC);
+
+-- nativego スキーマには ALTER DEFAULT PRIVILEGES が無いため、新規テーブルには
+-- 明示的に GRANT を当てる必要がある
+GRANT SELECT, INSERT, UPDATE, DELETE ON nativego.output_topics TO authenticated;
