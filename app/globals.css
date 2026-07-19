@@ -17,6 +17,16 @@ label[for="page-size"],
    理由: DesignTokens コンポーネントが tokens.css のデフォルト値を <style> で
    後から注入するため、ここに書いても DOM順で負けて上書きが無効化される。 */
 
+/* サイドバー背景色 — go-design-system の Sidebar は className/style props を
+   実際に背景色を持つ内側の [data-sidebar="sidebar"] div に渡せない構造のため、
+   CSS変数の上書きだけでは効かないケースがある。属性セレクタで直接強制する。 */
+[data-sidebar="sidebar"] {
+  background-color: oklch(96% 0.014 75) !important;
+}
+.dark [data-sidebar="sidebar"] {
+  background-color: oklch(23% 0.02 280) !important;
+}
+
 /* ベースカラー — ダークモードで見出しが消えないよう本文色を継承させる */
 @layer base {
   body {

@@ -454,7 +454,7 @@ export function RepeatingSession({
             className="mb-1.5 text-[12.5px] font-semibold uppercase tracking-[0.06em]"
             style={{ color: "var(--color-accent)" }}
           >
-            {kindLabel}リピーティング · {sessionCurrent}/{sessionTotal}件
+            {kindLabel} Repeating · {sessionCurrent}/{sessionTotal}
           </div>
           <div
             className="h-1 overflow-hidden rounded-full"
@@ -477,7 +477,7 @@ export function RepeatingSession({
           }}
         >
           <X className="h-3.5 w-3.5" />
-          終了
+          End
         </button>
       </div>
 
@@ -601,7 +601,7 @@ export function RepeatingSession({
                 )}
               >
                 <Languages className="h-3.5 w-3.5" />
-                日本語
+                Japanese
               </button>
             </div>
           </div>

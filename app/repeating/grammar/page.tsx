@@ -45,7 +45,7 @@ function CompletionNavButton({
       </span>
       {done && (
         <span className="text-xs text-muted-foreground ml-2 shrink-0">
-          今日完了済み
+          Done today
         </span>
       )}
     </Button>
@@ -331,7 +331,7 @@ export default function GrammarRepeatingPage() {
     <>
       <RepeatingSession
         language={language}
-        kindLabel="文法"
+        kindLabel="Grammar"
         title={current.name}
         summary={current.summary?.replace(/\\n/g, " ")}
         topicLabel={current.topic_label}
@@ -376,23 +376,23 @@ export default function GrammarRepeatingPage() {
 
       <RepeatingCompleteModal
         open={showComplete}
-        title="お疲れ様でした！"
-        subtitle="文法リピーティングを 1 周完了しました"
+        title="Nice work!"
+        subtitle="You completed a round of Grammar Repeating"
         itemCount={items.length}
       >
         <CompletionNavButton
-          label="文法リピーティング"
+          label="Grammar Repeating"
           done={todayStatus.grammar}
           onClick={restartSession}
         />
         <CompletionNavButton
-          label="フレーズリピーティング"
+          label="Phrase Repeating"
           done={todayStatus.expression}
           onClick={() => router.push("/repeating/expression")}
         />
         {language === "vi" && (
           <CompletionNavButton
-            label="単語リピーティング"
+            label="Word Repeating"
             done={todayStatus.word}
             onClick={() => router.push("/repeating/word")}
           />
@@ -402,7 +402,7 @@ export default function GrammarRepeatingPage() {
           onClick={() => router.push("/")}
           className="w-full text-muted-foreground"
         >
-          ダッシュボードに戻る
+          Back to Dashboard
         </Button>
       </RepeatingCompleteModal>
     </>

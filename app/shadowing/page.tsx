@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@takaki/go-design-system";
-import { Plus, ListVideo, ExternalLink, Check, Trash2 } from "lucide-react";
+import { Plus, ListVideo, ExternalLink, Check, Lock, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@takaki/go-design-system";
 import { useCurrentLanguage } from "@/lib/language-context";
@@ -20,6 +20,13 @@ import type { YoutubeChannel, YoutubeVideo } from "@/lib/types";
 type VideoWithLap = YoutubeVideo & { lapCount: number };
 const ROUNDS = [1, 2, 3] as const;
 type Round = (typeof ROUNDS)[number];
+
+type ChannelPlaylist = {
+  id: string;
+  title: string;
+  thumbnailUrl: string | null;
+  itemCount: number;
+};
 
 const STANDALONE_CHANNEL_URL = "nativego:standalone-videos";
 
@@ -39,6 +46,9 @@ export default function ShadowingPage() {
   const [playlistUrl, setPlaylistUrl] = useState("");
   const [fetchingPlaylist, setFetchingPlaylist] = useState(false);
   const [playlistFetchError, setPlaylistFetchError] = useState("");
+  const [channelPlaylists, setChannelPlaylists] = useState<ChannelPlaylist[] | null>(null);
+  const [loadingChannelPlaylists, setLoadingChannelPlaylists] = useState(false);
+  const [importingPlaylistId, setImportingPlaylistId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -120,11 +130,11 @@ export default function ShadowingPage() {
     });
 
     if (error) {
-      toast.error("記録に失敗しました");
+      toast.error("Failed to record");
       return;
     }
 
-    toast.success(`Round ${nextLap} 完了！`);
+    toast.success(`Round ${nextLap} done!`);
     setVideos((prev) =>
       prev.map((v) => (v.id === videoId ? { ...v, lapCount: nextLap } : v)),
     );
@@ -138,11 +148,11 @@ export default function ShadowingPage() {
       .eq("id", videoId);
 
     if (error) {
-      toast.error("削除に失敗しました");
+      toast.error("Failed to delete");
       return;
     }
 
-    toast.success("動画を削除しました");
+    toast.success("Video deleted");
     setVideos((prev) => prev.filter((v) => v.id !== videoId));
   };
 
@@ -160,49 +170,73 @@ export default function ShadowingPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setVideoFetchError(data.error ?? "取得に失敗しました");
+        setVideoFetchError(data.error ?? "Failed to fetch");
         return;
       }
 
-      toast.success(`「${data.title}」を追加しました`);
+      toast.success(`Added "${data.title}"`);
       setShowAddVideoModal(false);
       setVideoUrl("");
       await loadData();
     } catch {
-      setVideoFetchError("ネットワークエラーが発生しました");
+      setVideoFetchError("Network error");
     } finally {
       setFetchingVideo(false);
+    }
+  };
+
+  const importPlaylist = async (url: string) => {
+    setPlaylistFetchError("");
+    try {
+      const res = await fetch("/api/youtube-playlist-fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlistUrl: url, language }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPlaylistFetchError(data.error ?? "Failed to fetch");
+        return false;
+      }
+
+      toast.success(`Added ${data.videoCount} video(s) from "${data.channelName}"`);
+      setShowAddPlaylistModal(false);
+      setPlaylistUrl("");
+      setChannelPlaylists(null);
+      await loadData();
+      return true;
+    } catch {
+      setPlaylistFetchError("Network error");
+      return false;
     }
   };
 
   const handleFetchPlaylist = async () => {
     if (!playlistUrl.trim()) return;
     setFetchingPlaylist(true);
-    setPlaylistFetchError("");
-
-    try {
-      const res = await fetch("/api/youtube-playlist-fetch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playlistUrl: playlistUrl.trim(), language }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setPlaylistFetchError(data.error ?? "取得に失敗しました");
-        return;
-      }
-
-      toast.success(`「${data.channelName}」の動画${data.videoCount}本を追加しました`);
-      setShowAddPlaylistModal(false);
-      setPlaylistUrl("");
-      await loadData();
-    } catch {
-      setPlaylistFetchError("ネットワークエラーが発生しました");
-    } finally {
-      setFetchingPlaylist(false);
-    }
+    await importPlaylist(playlistUrl.trim());
+    setFetchingPlaylist(false);
   };
+
+  const handleSelectChannelPlaylist = async (playlistId: string) => {
+    setImportingPlaylistId(playlistId);
+    await importPlaylist(`https://www.youtube.com/playlist?list=${playlistId}`);
+    setImportingPlaylistId(null);
+  };
+
+  const loadChannelPlaylists = useCallback(async () => {
+    setLoadingChannelPlaylists(true);
+    try {
+      const res = await fetch(`/api/youtube-channel-playlists?language=${language}`);
+      const data = await res.json();
+      setChannelPlaylists(res.ok ? data.playlists ?? [] : []);
+    } catch {
+      setChannelPlaylists([]);
+    } finally {
+      setLoadingChannelPlaylists(false);
+    }
+  }, [language]);
 
   const doneCount = videos.filter((v) => v.lapCount >= round).length;
 
@@ -217,12 +251,15 @@ export default function ShadowingPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => setShowAddPlaylistModal(true)}
+            onClick={() => {
+              setShowAddPlaylistModal(true);
+              if (channelPlaylists === null) loadChannelPlaylists();
+            }}
             size="sm"
             variant="outline"
           >
             <ListVideo className="h-4 w-4 mr-1.5" />
-            プレイリストを追加
+            Add playlist
           </Button>
           <Button
             onClick={() => setShowAddVideoModal(true)}
@@ -230,21 +267,21 @@ export default function ShadowingPage() {
             variant="outline"
           >
             <Plus className="h-4 w-4 mr-1.5" />
-            動画を追加
+            Add video
           </Button>
         </div>
       </div>
       <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
-        {language === "en" ? "Ryan Suzuki" : channel?.channel_name || "シャドーイング"}
+        {language === "en" ? "Ryan Suzuki" : channel?.channel_name || "Shadowing"}
       </h1>
 
       {loading ? (
-        <div className="text-muted-foreground text-sm">読み込み中...</div>
+        <div className="text-muted-foreground text-sm">Loading...</div>
       ) : !channel || videos.length === 0 ? (
         <div className="text-center py-20 text-muted-foreground">
-          <p className="font-medium">動画が登録されていません</p>
+          <p className="font-medium">No videos yet</p>
           <p className="text-sm mt-1">
-            「動画を追加」からYouTube動画を登録してください
+            Add one with &quot;Add video&quot; or &quot;Add playlist&quot;
           </p>
         </div>
       ) : (
@@ -302,11 +339,11 @@ export default function ShadowingPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>動画を追加</DialogTitle>
+            <DialogTitle>Add video</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">動画URL</label>
+              <label className="text-sm font-medium">Video URL</label>
               <Input
                 value={videoUrl}
                 onChange={(e) => setVideoUrl(e.target.value)}
@@ -316,7 +353,7 @@ export default function ShadowingPage() {
                 }}
               />
               <p className="text-xs text-muted-foreground">
-                例: https://www.youtube.com/watch?v=xxxxxxxxxxx /
+                e.g. https://www.youtube.com/watch?v=xxxxxxxxxxx /
                 https://youtu.be/xxxxxxxxxxx
               </p>
             </div>
@@ -328,7 +365,7 @@ export default function ShadowingPage() {
                 onClick={handleFetchVideo}
                 disabled={fetchingVideo || !videoUrl.trim()}
               >
-                {fetchingVideo ? "取得中..." : "動画を追加する"}
+                {fetchingVideo ? "Fetching..." : "Add video"}
               </Button>
             </FormActions>
           </div>
@@ -348,11 +385,51 @@ export default function ShadowingPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>プレイリストを追加</DialogTitle>
+            <DialogTitle>Add playlist</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {loadingChannelPlaylists ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                Loading playlists...
+              </p>
+            ) : channelPlaylists && channelPlaylists.length > 0 ? (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  {language === "en" ? "Ryan Suzuki" : "Channel"}&apos;s playlists
+                </label>
+                <div className="max-h-64 space-y-1 overflow-y-auto">
+                  {channelPlaylists.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => handleSelectChannelPlaylist(p.id)}
+                      disabled={importingPlaylistId !== null}
+                      className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-surface-subtle)] disabled:opacity-50"
+                    >
+                      {p.thumbnailUrl ? (
+                        <img
+                          src={p.thumbnailUrl}
+                          alt=""
+                          className="h-10 w-16 shrink-0 rounded object-cover"
+                        />
+                      ) : (
+                        <span className="h-10 w-16 shrink-0 rounded bg-muted" />
+                      )}
+                      <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                        {p.title}
+                      </span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {importingPlaylistId === p.id
+                          ? "Importing..."
+                          : `${p.itemCount} videos`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">プレイリストURL</label>
+              <label className="text-sm font-medium">Or paste a playlist URL</label>
               <Input
                 value={playlistUrl}
                 onChange={(e) => setPlaylistUrl(e.target.value)}
@@ -362,7 +439,8 @@ export default function ShadowingPage() {
                 }}
               />
               <p className="text-xs text-muted-foreground">
-                プレイリスト内の動画をまとめて追加します。プレイリストに含まれない動画は「動画を追加」から個別に追加してください。
+                Imports every video in the playlist. Videos outside a playlist can be
+                added individually with &quot;Add video&quot;.
               </p>
             </div>
             {playlistFetchError && (
@@ -373,7 +451,7 @@ export default function ShadowingPage() {
                 onClick={handleFetchPlaylist}
                 disabled={fetchingPlaylist || !playlistUrl.trim()}
               >
-                {fetchingPlaylist ? "取得中..." : "プレイリストを追加する"}
+                {fetchingPlaylist ? "Fetching..." : "Add playlist"}
               </Button>
             </FormActions>
           </div>
@@ -400,6 +478,7 @@ function VideoRow({
   const [deleting, setDeleting] = useState(false);
   const isDoneThisRound = video.lapCount >= round;
   const canMark = video.lapCount === round - 1;
+  const locked = !isDoneThisRound && !canMark;
 
   const handleComplete = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -459,21 +538,29 @@ function VideoRow({
       </div>
       <button
         onClick={handleComplete}
-        disabled={marking || (!isDoneThisRound && !canMark)}
-        title={!isDoneThisRound && !canMark ? "前のRoundを先に完了してください" : undefined}
+        disabled={marking || locked}
+        title={locked ? "Finish the previous round first" : undefined}
         className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-default"
         style={{
           border: `2px solid ${isDoneThisRound ? "var(--color-primary)" : "var(--color-border-default)"}`,
-          background: isDoneThisRound ? "var(--color-primary)" : "transparent",
-          color: "var(--color-surface)",
+          background: isDoneThisRound
+            ? "var(--color-primary)"
+            : locked
+              ? "var(--color-surface-subtle)"
+              : "transparent",
+          color: isDoneThisRound ? "var(--color-surface)" : "var(--color-text-secondary)",
         }}
       >
-        {isDoneThisRound && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+        {isDoneThisRound ? (
+          <Check className="h-3.5 w-3.5" strokeWidth={3} />
+        ) : locked ? (
+          <Lock className="h-3 w-3" />
+        ) : null}
       </button>
       <Button
         onClick={handleDelete}
         disabled={deleting}
-        title="削除"
+        title="Delete"
         variant="ghost"
         size="sm"
         className="shrink-0 p-1 text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100 disabled:opacity-30"

@@ -25,7 +25,7 @@ import type { OutputTopic } from "@/lib/types";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function wordCount(text: string) {
@@ -89,7 +89,7 @@ export default function OutputPage() {
     });
     setSaving(false);
     if (error) {
-      toast.error("保存に失敗しました");
+      toast.error("Failed to save");
       return;
     }
     setTopics((prev) =>
@@ -97,7 +97,7 @@ export default function OutputPage() {
         t.id === active.id ? { ...t, responses: nextResponses } : t,
       ),
     );
-    toast.success("保存しました");
+    toast.success("Saved");
   }
 
   function handleAddVersion() {
@@ -117,7 +117,7 @@ export default function OutputPage() {
     const { error, topic } = await createOutputTopic(newTitle.trim());
     setCreating(false);
     if (error || !topic) {
-      toast.error(error ? `作成に失敗しました: ${error}` : "作成に失敗しました");
+      toast.error(error ? `Failed to create: ${error}` : "Failed to create");
       return;
     }
     setTopics((prev) => [topic, ...prev]);
@@ -127,7 +127,7 @@ export default function OutputPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("このトピックを削除しますか？")) return;
+    if (!confirm("Delete this topic?")) return;
     await deleteOutputTopic(id);
     setTopics((prev) => prev.filter((t) => t.id !== id));
     if (activeId === id) setActiveId(null);
@@ -136,13 +136,13 @@ export default function OutputPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
-        読み込み中...
+        Loading...
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-[980px]">
+    <div className="w-full">
       <div className="mb-1.5 flex items-center justify-between">
         <div
           className="text-[12.5px] font-semibold uppercase tracking-[0.06em]"
@@ -152,7 +152,7 @@ export default function OutputPage() {
         </div>
         <Button size="sm" variant="outline" onClick={() => setShowNewModal(true)}>
           <Plus className="h-4 w-4 mr-1.5" />
-          トピックを追加
+          Add topic
         </Button>
       </div>
       <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
@@ -161,11 +161,11 @@ export default function OutputPage() {
 
       <div
         className="grid items-start gap-[22px]"
-        style={{ gridTemplateColumns: "230px 1fr" }}
+        style={{ gridTemplateColumns: "280px 1fr", height: "calc(100vh - 190px)" }}
       >
         {/* 左カラム：トピック一覧 */}
         <div
-          className="min-h-[500px] rounded-[20px] p-2"
+          className="h-full overflow-y-auto rounded-[20px] p-2"
           style={{
             background: "var(--color-surface)",
             border: "1px solid var(--color-border-default)",
@@ -203,12 +203,12 @@ export default function OutputPage() {
         {!active ? (
           <EmptyState
             icon={<PenLine className="h-8 w-8" />}
-            title="トピックがありません"
-            description="「トピックを追加」から追加して、レッスン前に話す内容を書いてみましょう"
+            title="No topics yet"
+            description='Add one with "Add topic" and start writing what you want to say before your lesson.'
           />
         ) : (
           <div
-            className="rounded-[20px] p-[26px_30px]"
+            className="flex h-full flex-col rounded-[20px] p-[26px_30px]"
             style={{
               background: "var(--color-surface)",
               border: "1px solid var(--color-border-default)",
@@ -222,7 +222,7 @@ export default function OutputPage() {
               onChange={handleTitleChange}
               className="mb-4 w-full border-0 border-b border-dashed pb-3.5 text-[18px] font-bold text-foreground"
               inputClassName="border-0 border-b border-dashed pb-3.5 text-[18px] font-bold"
-              placeholder="トピックを入力..."
+              placeholder="Enter a topic..."
             />
             <div className="mb-3 flex flex-wrap items-center gap-1.5">
               {versions.map((_, i) => {
@@ -253,11 +253,11 @@ export default function OutputPage() {
             <Textarea
               value={response}
               onChange={(e) => setResponse(e.target.value)}
-              placeholder="自分の言葉で英語の回答を書いてみましょう..."
-              className="min-h-[200px] w-full resize-y text-[15px] leading-relaxed"
+              placeholder="Write your response in your own words..."
+              className="min-h-0 w-full flex-1 resize-none text-[15px] leading-relaxed"
               style={{ background: "var(--color-background)" }}
             />
-            <div className="mt-3.5 flex items-center justify-between">
+            <div className="mt-3.5 flex shrink-0 items-center justify-between">
               <span className="text-[12.5px] text-muted-foreground tabular-nums">
                 {wordCount(response)} words
               </span>
@@ -269,14 +269,14 @@ export default function OutputPage() {
                   onClick={() => handleDelete(active.id)}
                 >
                   <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                  削除
+                  Delete
                 </Button>
                 <Button
                   size="sm"
                   onClick={handleSaveResponse}
                   disabled={saving || response === (versions[versionIdx] ?? "")}
                 >
-                  {saving ? "保存中..." : "Save"}
+                  {saving ? "Saving..." : "Save"}
                 </Button>
               </div>
             </div>
@@ -287,12 +287,12 @@ export default function OutputPage() {
       <Dialog open={showNewModal} onOpenChange={setShowNewModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>トピックを追加</DialogTitle>
+            <DialogTitle>Add topic</DialogTitle>
           </DialogHeader>
           <Input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="例: What's a hobby you enjoy after work, and why?"
+            placeholder="e.g. What's a hobby you enjoy after work, and why?"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleCreate();
             }}
@@ -302,7 +302,7 @@ export default function OutputPage() {
               onClick={handleCreate}
               disabled={creating || !newTitle.trim()}
             >
-              {creating ? "作成中..." : "追加"}
+              {creating ? "Creating..." : "Add"}
             </Button>
           </DialogFooter>
         </DialogContent>

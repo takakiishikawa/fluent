@@ -87,7 +87,7 @@ function NoteRow({
       onChanged(draft.trim() || null);
       setOpen(false);
     } catch {
-      toast.error("メモの保存に失敗しました");
+      toast.error("Failed to save note");
     } finally {
       setSaving(false);
     }
@@ -121,10 +121,10 @@ function NoteRow({
       />
       <div className="mt-1.5 flex gap-2">
         <Button size="sm" onClick={commit} disabled={saving}>
-          {saving ? "保存中..." : "保存"}
+          {saving ? "Saving..." : "Save"}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
-          キャンセル
+          Cancel
         </Button>
       </div>
     </div>
@@ -169,7 +169,7 @@ function InputTable({
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center text-muted-foreground">
-        読み込み中...
+        Loading...
       </div>
     );
   }
@@ -190,7 +190,7 @@ function InputTable({
       </div>
       {visible.length === 0 ? (
         <div className="px-[18px] py-10 text-center text-sm text-muted-foreground">
-          項目がありません
+          No items
         </div>
       ) : (
         visible.map((row) => {
