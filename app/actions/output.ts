@@ -28,7 +28,7 @@ export async function createOutputTopic(
 
   const { data, error } = await supabase
     .from("output_topics")
-    .insert({ user_id: user.id, language, title, response: "" })
+    .insert({ user_id: user.id, language, title, response: "", responses: [""] })
     .select()
     .single();
 
@@ -40,7 +40,7 @@ export async function createOutputTopic(
 
 export async function updateOutputTopic(
   id: string,
-  patch: { title?: string; response?: string },
+  patch: { title?: string; response?: string; responses?: string[] },
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase

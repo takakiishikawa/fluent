@@ -3,32 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@takaki/go-design-system";
-import {
-  BookOpen,
-  MessageSquare,
-  Sparkles,
-  Zap,
-  Flame,
-  Mountain,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Dialog, DialogContent } from "@takaki/go-design-system";
 import { useCurrentLanguage } from "@/lib/language-context";
 
 type Category = "grammar" | "expression" | "word";
-type Step = "category" | "count";
 type Counts = Record<Category, number>;
 
-const COUNT_PRESETS = [10, 30, 50] as const;
-const COUNT_DESCS = ["サクッと", "集中して", "がっつり"] as const;
-const COUNT_ICONS = [Zap, Flame, Mountain];
+const COUNT_PRESETS = [10, 30] as const;
+const COUNT_TAGS = ["Quick", "Focused"] as const;
 
 const TABLE_BY_CATEGORY: Record<Category, string> = {
   grammar: "grammar",
@@ -38,46 +20,21 @@ const TABLE_BY_CATEGORY: Record<Category, string> = {
 
 const ALL_CATEGORIES: Category[] = ["grammar", "expression", "word"];
 
-const CATEGORIES_VI: {
-  value: Category;
-  label: string;
-  icon: typeof BookOpen;
-  desc: string;
-}[] = [
-  { value: "grammar", label: "文法", icon: BookOpen, desc: "文型パターン" },
-  {
-    value: "expression",
-    label: "フレーズ",
-    icon: MessageSquare,
-    desc: "固定表現・あいさつ",
-  },
-  { value: "word", label: "単語", icon: Sparkles, desc: "語彙" },
+const CATEGORIES_VI: { value: Category; label: string }[] = [
+  { value: "grammar", label: "文法" },
+  { value: "expression", label: "フレーズ" },
+  { value: "word", label: "単語" },
 ];
 
-const CATEGORIES_EN: {
-  value: Category;
-  label: string;
-  icon: typeof BookOpen;
-  desc: string;
-}[] = [
-  { value: "grammar", label: "文法", icon: BookOpen, desc: "文型パターン" },
-  {
-    value: "expression",
-    label: "フレーズ",
-    icon: MessageSquare,
-    desc: "固定表現・あいさつ",
-  },
+const CATEGORIES_EN: { value: Category; label: string }[] = [
+  { value: "grammar", label: "Grammar" },
+  { value: "expression", label: "Phrases" },
 ];
 
-export function RepeatingPickerDialog({
-  onClose,
-}: {
-  onClose?: () => void;
-}) {
+export function RepeatingPickerDialog({ onClose }: { onClose?: () => void }) {
   const router = useRouter();
   const language = useCurrentLanguage();
-  const [step, setStep] = useState<Step>("category");
-  const [category, setCategory] = useState<Category | null>(null);
+  const [category, setCategory] = useState<Category>("grammar");
   const [counts, setCounts] = useState<Counts | null>(null);
 
   const categories = language === "vi" ? CATEGORIES_VI : CATEGORIES_EN;
@@ -115,25 +72,19 @@ export function RepeatingPickerDialog({
     else router.push("/");
   }
 
-  function handlePickCategory(c: Category) {
-    setCategory(c);
-    setStep("count");
-  }
-
   function handlePickCount(n: number) {
-    if (!category) return;
     router.push(`/repeating/${category}?count=${n}`);
   }
 
-  // 実データ件数に合わせた件数オプション
-  // 例) total=15 → [10, 15] / total>=50 → [10, 30, 50]
-  const total = category && counts ? counts[category] : 0;
+  const total = counts ? counts[category] : 0;
   const seen = new Set<number>();
-  const countOptions = COUNT_PRESETS.map((n, i) => ({
-    count: Math.min(n, total),
-    desc: COUNT_DESCS[i],
-    Icon: COUNT_ICONS[i],
-  })).filter((o) => {
+  const countOptions = [
+    ...COUNT_PRESETS.map((n, i) => ({
+      count: Math.min(n, total),
+      tag: COUNT_TAGS[i],
+    })),
+    { count: total, tag: "Deep" },
+  ].filter((o) => {
     if (o.count <= 0 || seen.has(o.count)) return false;
     seen.add(o.count);
     return true;
@@ -146,96 +97,67 @@ export function RepeatingPickerDialog({
         if (!open) handleClose();
       }}
     >
-      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>
-            {step === "category"
-              ? "リピーティングする種類を選ぼう"
-              : "件数を選ぼう"}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent
+        className="w-[360px] max-w-[calc(100%-2rem)] gap-0 rounded-[20px] p-[22px]"
+        style={{
+          background: "var(--color-surface)",
+          boxShadow: "var(--shadow-md)",
+          border: "1px solid var(--color-border-default)",
+        }}
+        aria-describedby={undefined}
+      >
+        <div className="mb-4 pr-6">
+          <span className="text-[17px] font-bold text-foreground">
+            Start repeating
+          </span>
+        </div>
 
-        {step === "category" ? (
-          <div className="space-y-2 pt-2">
-            {categories.map((c) => {
-              const Icon = c.icon;
-              const available = counts?.[c.value] ?? null;
-              const disabled = available === 0;
-              return (
-                <Button
-                  key={c.value}
-                  size="lg"
-                  variant="outline"
-                  className="w-full justify-between h-14"
-                  disabled={disabled}
-                  onClick={() => handlePickCategory(c.value)}
-                >
-                  <span className="flex items-center gap-3">
-                    <Icon className="h-4 w-4" />
-                    <span className="text-base font-medium">{c.label}</span>
-                  </span>
-                  <span className="flex items-center gap-2 opacity-70">
-                    <span className="text-xs">
-                      {available === null
-                        ? c.desc
-                        : available === 0
-                          ? "練習中なし"
-                          : `${available}件`}
-                    </span>
-                    <ChevronRight className="h-4 w-4" />
-                  </span>
-                </Button>
-              );
-            })}
-          </div>
-        ) : (
-          <>
-            <div className="space-y-2 pt-2">
-              {countOptions.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  練習できる項目がありません
-                </p>
-              ) : (
-                countOptions.map((o) => {
-                  const Icon = o.Icon;
-                  return (
-                    <Button
-                      key={o.count}
-                      size="lg"
-                      variant="outline"
-                      className="w-full justify-between h-14"
-                      onClick={() => handlePickCount(o.count)}
-                    >
-                      <span className="flex items-center gap-3">
-                        <Icon className="h-4 w-4" />
-                        <span className="text-base font-medium">
-                          {o.count}件
-                        </span>
-                      </span>
-                      <span className="flex items-center gap-2 opacity-70">
-                        <span className="text-xs">{o.desc}</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </span>
-                    </Button>
-                  );
-                })
-              )}
-            </div>
-            <div className="pt-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setCategory(null);
-                  setStep("category");
+        <div className="mb-[18px] flex gap-2">
+          {categories.map((c) => {
+            const active = category === c.value;
+            const available = counts?.[c.value] ?? null;
+            return (
+              <button
+                key={c.value}
+                onClick={() => setCategory(c.value)}
+                disabled={available === 0}
+                className="flex-1 rounded-[12px] px-1.5 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-40"
+                style={{
+                  border: `1px solid ${active ? "var(--color-primary)" : "var(--color-border-default)"}`,
+                  background: active ? "var(--color-primary-soft)" : "var(--color-surface)",
+                  color: active ? "var(--color-primary)" : "var(--color-text-secondary)",
                 }}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                種類選択に戻る
-              </Button>
-            </div>
-          </>
-        )}
+                {c.label} · {available ?? "…"}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mb-2 text-[12.5px] font-semibold text-muted-foreground">
+          How many?
+        </div>
+        <div className="flex flex-col gap-2">
+          {countOptions.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              練習できる項目がありません
+            </p>
+          ) : (
+            countOptions.map((o) => (
+              <button
+                key={o.count}
+                onClick={() => handlePickCount(o.count)}
+                className="flex items-center justify-between rounded-[12px] px-4 py-3 text-[14px] font-semibold text-foreground transition-colors hover:bg-[var(--color-surface-subtle)]"
+                style={{ border: "1px solid var(--color-border-default)" }}
+              >
+                <span>{o.count} items</span>
+                <span className="text-[12px] font-medium text-muted-foreground">
+                  {o.tag}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

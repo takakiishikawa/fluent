@@ -674,8 +674,25 @@ export async function toggleUnderstood(
     .eq("id", id);
   if (error) throw error;
   revalidatePath("/list");
-  revalidatePath("/grammar");
-  revalidatePath("/phrases");
+  revalidatePath("/library");
+}
+
+export async function toggleRound(
+  kind: "grammar" | "expression",
+  id: string,
+  round: 1 | 2 | 3,
+  next: boolean,
+): Promise<void> {
+  const supabase = await createClient();
+  const table = kind === "grammar" ? "grammar" : "expressions";
+  const column = `round${round}_done`;
+  const { error } = await supabase
+    .from(table)
+    .update({ [column]: next })
+    .eq("id", id);
+  if (error) throw error;
+  revalidatePath("/library");
+  revalidatePath("/");
 }
 
 export async function upsertNativeCampLog(

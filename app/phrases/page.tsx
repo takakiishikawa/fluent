@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn, EmptyState } from "@takaki/go-design-system";
-import { CatalogTable } from "@/components/catalog-table";
 import {
   Coffee,
   ShoppingBag,
@@ -134,20 +134,11 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 function EnPhraseCatalog() {
-  return (
-    <div className="w-full max-w-[980px]">
-      <div
-        className="mb-1.5 text-[12.5px] font-semibold uppercase tracking-[0.06em]"
-        style={{ color: "var(--color-accent)" }}
-      >
-        Library
-      </div>
-      <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
-        Phrase catalog
-      </h1>
-      <CatalogTable kind="expression" />
-    </div>
-  );
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/library");
+  }, [router]);
+  return null;
 }
 
 export default function PhrasesPage() {

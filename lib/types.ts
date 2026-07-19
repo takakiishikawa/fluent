@@ -40,6 +40,9 @@ export interface Grammar {
   topic_icon: string | null;
   pattern_quote: string | null;
   understood: boolean;
+  round1_done: boolean;
+  round2_done: boolean;
+  round3_done: boolean;
 }
 
 export interface Expression {
@@ -63,6 +66,9 @@ export interface Expression {
   topic_icon: string | null;
   pattern_quote: string | null;
   understood: boolean;
+  round1_done: boolean;
+  round2_done: boolean;
+  round3_done: boolean;
 }
 
 export interface Word {
@@ -109,6 +115,7 @@ export interface OutputTopic {
   language: Language;
   title: string;
   response: string;
+  responses: string[];
   created_at: string;
   updated_at: string;
 }

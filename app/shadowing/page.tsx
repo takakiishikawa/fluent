@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@takaki/go-design-system";
-import { Plus, ExternalLink, CheckCircle, Trash2 } from "lucide-react";
+import { Plus, ExternalLink, Check, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@takaki/go-design-system";
 import { useCurrentLanguage } from "@/lib/language-context";
@@ -192,7 +192,7 @@ export default function ShadowingPage() {
         </Button>
       </div>
       <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
-        {channel?.channel_name || "シャドーイング"}
+        {language === "en" ? "Ryan Suzuki" : channel?.channel_name || "シャドーイング"}
       </h1>
 
       {loading ? (
@@ -228,10 +228,17 @@ export default function ShadowingPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {videos.map((video) => (
-              <VideoCard
+          <div
+            className="overflow-hidden rounded-[20px] px-2"
+            style={{ border: "1px solid var(--color-border-default)" }}
+          >
+            {videos.map((video, i) => (
+              <VideoRow
                 key={video.id}
+                position={i + 1}
+                channelName={
+                  language === "en" ? "Ryan Suzuki" : channel?.channel_name || ""
+                }
                 video={video}
                 round={round}
                 onMarkDone={handleMarkDone}
@@ -291,12 +298,16 @@ export default function ShadowingPage() {
   );
 }
 
-function VideoCard({
+function VideoRow({
+  position,
+  channelName,
   video,
   round,
   onMarkDone,
   onDelete,
 }: {
+  position: number;
+  channelName: string;
   video: VideoWithLap;
   round: Round;
   onMarkDone: (id: string, currentLap: number) => Promise<void>;
@@ -310,6 +321,7 @@ function VideoCard({
   const handleComplete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!canMark) return;
     setMarking(true);
     await onMarkDone(video.id, video.lapCount);
     setMarking(false);
@@ -328,85 +340,64 @@ function VideoCard({
       href={video.video_url}
       target="_blank"
       rel="noopener noreferrer"
-      className={cn(
-        "group relative rounded-[20px] border border-[var(--color-border-default)] bg-card overflow-hidden flex flex-col transition-all cursor-pointer",
-        "hover:border-[var(--color-border-strong)] hover:-translate-y-0.5",
-      )}
+      className="group flex items-center gap-3.5 py-3"
+      style={{ borderTop: "1px solid var(--color-border-default)" }}
     >
-      <div className="aspect-video bg-muted relative overflow-hidden">
+      <span className="w-5 shrink-0 text-center text-[13px] font-semibold text-muted-foreground">
+        {position}
+      </span>
+      <div className="relative h-[64px] w-[112px] shrink-0 overflow-hidden rounded-[8px] bg-muted">
         {video.thumbnail_url ? (
           <img
             src={video.thumbnail_url}
             alt={video.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="h-full w-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ExternalLink className="h-8 w-8 text-muted-foreground/30" />
+          <div className="flex h-full w-full items-center justify-center">
+            <ExternalLink className="h-5 w-5 text-muted-foreground/30" />
           </div>
         )}
-        {isDoneThisRound && (
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ background: "var(--color-overlay-default)" }}
-          >
-            <CheckCircle className="h-6 w-6 text-white drop-shadow" />
-          </div>
+        {video.duration && (
+          <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10.5px] text-white">
+            {video.duration}
+          </span>
         )}
-        <Button
-          onClick={handleDelete}
-          disabled={deleting}
-          title="削除"
-          variant="ghost"
-          size="sm"
-          className="absolute top-2 left-2 p-1 rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-black/60 transition-all disabled:opacity-30 cursor-pointer"
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
       </div>
-
-      <div className="px-3 pt-3 pb-10">
+      <div className="min-w-0 flex-1">
         <p
           className={cn(
-            "text-sm font-medium line-clamp-2 leading-snug transition-colors",
-            isDoneThisRound
-              ? "text-muted-foreground"
-              : "group-hover:text-primary",
+            "text-[13.5px] font-semibold leading-snug",
+            isDoneThisRound ? "text-muted-foreground" : "text-foreground",
           )}
         >
           {video.title}
         </p>
-        {video.duration && (
-          <p
-            className={cn(
-              "text-xs mt-1",
-              isDoneThisRound
-                ? "text-muted-foreground/60"
-                : "text-muted-foreground",
-            )}
-          >
-            {video.duration}
-          </p>
-        )}
+        <p className="mt-1 text-[12px] text-muted-foreground">{channelName}</p>
       </div>
-
-      <div className="absolute bottom-2.5 right-2.5">
-        {isDoneThisRound ? (
-          <Button variant="outline" size="sm" disabled className="cursor-default">
-            ✓ Done
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            onClick={handleComplete}
-            disabled={marking || !canMark}
-            title={!canMark ? "前のRoundを先に完了してください" : undefined}
-            className="cursor-pointer"
-          >
-            {marking ? "記録中..." : "Mark done"}
-          </Button>
-        )}
-      </div>
+      <button
+        onClick={handleComplete}
+        disabled={marking || (!isDoneThisRound && !canMark)}
+        title={!isDoneThisRound && !canMark ? "前のRoundを先に完了してください" : undefined}
+        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-default"
+        style={{
+          border: `2px solid ${isDoneThisRound ? "var(--color-primary)" : "var(--color-border-default)"}`,
+          background: isDoneThisRound ? "var(--color-primary)" : "transparent",
+          color: "var(--color-surface)",
+        }}
+      >
+        {isDoneThisRound && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+      </button>
+      <Button
+        onClick={handleDelete}
+        disabled={deleting}
+        title="削除"
+        variant="ghost"
+        size="sm"
+        className="shrink-0 p-1 text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100 disabled:opacity-30"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
     </a>
   );
 }

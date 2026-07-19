@@ -36,6 +36,7 @@ export default function OutputPage() {
   const [topics, setTopics] = useState<OutputTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [versionIdx, setVersionIdx] = useState(0);
   const [response, setResponse] = useState("");
   const [saving, setSaving] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -58,10 +59,16 @@ export default function OutputPage() {
     () => topics.find((t) => t.id === activeId) ?? null,
     [topics, activeId],
   );
+  const versions = active?.responses?.length ? active.responses : [""];
 
   useEffect(() => {
-    setResponse(active?.response ?? "");
-  }, [active?.id, active?.response]);
+    setVersionIdx(0);
+  }, [active?.id]);
+
+  useEffect(() => {
+    setResponse(versions[versionIdx] ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.id, versionIdx, active?.responses]);
 
   async function handleTitleChange(next: string) {
     if (!active || !next.trim() || next === active.title) return;
@@ -74,16 +81,34 @@ export default function OutputPage() {
   async function handleSaveResponse() {
     if (!active) return;
     setSaving(true);
-    const { error } = await updateOutputTopic(active.id, { response });
+    const nextResponses = [...versions];
+    nextResponses[versionIdx] = response;
+    const { error } = await updateOutputTopic(active.id, {
+      responses: nextResponses,
+      response: nextResponses[0] ?? "",
+    });
     setSaving(false);
     if (error) {
       toast.error("保存に失敗しました");
       return;
     }
     setTopics((prev) =>
-      prev.map((t) => (t.id === active.id ? { ...t, response } : t)),
+      prev.map((t) =>
+        t.id === active.id ? { ...t, responses: nextResponses } : t,
+      ),
     );
     toast.success("保存しました");
+  }
+
+  function handleAddVersion() {
+    if (!active) return;
+    const nextResponses = [...versions, ""];
+    setTopics((prev) =>
+      prev.map((t) =>
+        t.id === active.id ? { ...t, responses: nextResponses } : t,
+      ),
+    );
+    setVersionIdx(nextResponses.length - 1);
   }
 
   async function handleCreate() {
@@ -147,7 +172,9 @@ export default function OutputPage() {
           }}
         >
           {topics.map((t) => {
-            const written = t.response.trim().length > 0;
+            const written = (t.responses?.length ? t.responses : [t.response]).some(
+              (r) => r.trim().length > 0,
+            );
             const isActive = t.id === activeId;
             return (
               <button
@@ -197,6 +224,32 @@ export default function OutputPage() {
               inputClassName="border-0 border-b border-dashed pb-3.5 text-[18px] font-bold"
               placeholder="トピックを入力..."
             />
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              {versions.map((_, i) => {
+                const isActive = i === versionIdx;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setVersionIdx(i)}
+                    className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors"
+                    style={{
+                      border: `1px solid ${isActive ? "var(--color-primary)" : "var(--color-border-default)"}`,
+                      background: isActive ? "var(--color-primary-soft)" : "var(--color-surface)",
+                      color: isActive ? "var(--color-primary)" : "var(--color-text-secondary)",
+                    }}
+                  >
+                    Version {i + 1}
+                  </button>
+                );
+              })}
+              <button
+                onClick={handleAddVersion}
+                className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-muted-foreground"
+                style={{ border: "1px dashed var(--color-border-default)" }}
+              >
+                + Add version
+              </button>
+            </div>
             <Textarea
               value={response}
               onChange={(e) => setResponse(e.target.value)}
@@ -221,7 +274,7 @@ export default function OutputPage() {
                 <Button
                   size="sm"
                   onClick={handleSaveResponse}
-                  disabled={saving || response === active.response}
+                  disabled={saving || response === (versions[versionIdx] ?? "")}
                 >
                   {saving ? "保存中..." : "Save"}
                 </Button>

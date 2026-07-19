@@ -35,28 +35,30 @@ type NavItem = {
   languages?: Language[];
 };
 
-/** プライマリナビ（常時表示）— アイコンは色付きドット（design_handoff_fluent_redesign 準拠） */
+/** プライマリナビ（常時表示）— アイコンは色付きドット（NativeGo Concepts.dc.html 準拠） */
 const primaryNavItems: NavItem[] = [
   { href: "/", label: "Dashboard", shape: "square" },
   { href: "/repeating", label: "Repeating", shape: "circle" },
   { href: "/shadowing", label: "Shadowing", shape: "square" },
   { href: "/output", label: "Output", shape: "circle" },
-  { href: "/grammar", label: "Grammar", shape: "square", languages: ["en"] },
+  { href: "/library", label: "Input", shape: "square", languages: ["en"] },
   { href: "/phrases", label: "Phrases", shape: "circle", languages: ["vi"] },
   { href: "/list", label: "Library", shape: "square", languages: ["vi"] },
 ];
 
 /** プロフィール行ホバーで出すポップオーバー内ナビ */
-const popoverNavItems: NavItem[] = [
-  { href: "/phrases", label: "Phrases", shape: "circle", languages: ["en"] },
-  { href: "/report", label: "Report", shape: "square" },
-];
+const popoverNavItems: NavItem[] = [{ href: "/report", label: "Report", shape: "square" }];
 
 function isActive(href: string, pathname: string) {
   if (href === "/") return pathname === "/";
   if (href === "/repeating") return pathname.startsWith("/repeating");
-  if (href === "/grammar")
-    return pathname === "/grammar" || pathname === "/texts";
+  if (href === "/library")
+    return (
+      pathname === "/library" ||
+      pathname === "/grammar" ||
+      pathname === "/phrases" ||
+      pathname === "/texts"
+    );
   if (href === "/list") return pathname === "/list";
   return pathname.startsWith(href);
 }
@@ -98,8 +100,13 @@ export function NativeGoSidebar({
     return () => obs.disconnect();
   }, []);
 
-  // Shadowing のナビラベルを固定チャンネル（講師）名の下の名前に差し替える
+  // Shadowing のナビラベルを固定チャンネル（講師）名に差し替える。
+  // EN は実際のチューター名 "Ryan" で固定（デザイン仕様通り）。
   useEffect(() => {
+    if (currentLanguage === "en") {
+      setChannelName("Ryan");
+      return;
+    }
     supabase
       .from("youtube_channels")
       .select("channel_name")
