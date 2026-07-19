@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Textarea, Button, toast } from "@takaki/go-design-system";
-import { Lock, Check, MessageSquarePlus } from "lucide-react";
-import { toggleRound, setItemNote } from "@/app/actions/practice";
+import { Lock, Check, MessageSquarePlus, Sparkles } from "lucide-react";
+import { toggleRound, masterItem, setItemNote } from "@/app/actions/practice";
 import { useCurrentLanguage } from "@/lib/language-context";
 
 type Kind = "grammar" | "expression";
@@ -21,7 +21,7 @@ type Row = {
   playCount: number;
 };
 
-const GRID_COLS = "48px 1fr 100px 120px";
+const GRID_COLS = "48px 1fr 120px";
 
 function useLibraryItems(kind: Kind, reloadKey: number) {
   const supabase = useMemo(() => createClient(), []);
@@ -96,21 +96,24 @@ function NoteRow({
   if (!open) {
     return (
       <button
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation();
           setDraft(note ?? "");
           setOpen(true);
         }}
-        className="mt-1.5 flex items-center gap-1.5 text-[12px]"
+        className="mt-1.5 flex items-start gap-1.5 text-left text-[12px]"
         style={{ color: note ? "var(--color-primary)" : "var(--color-text-secondary)" }}
       >
-        <MessageSquarePlus className="h-3 w-3" />
-        {note ? (note.length > 60 ? note.slice(0, 60) + "…" : note) : "Add note"}
+        <MessageSquarePlus className="mt-[1px] h-3 w-3 shrink-0" />
+        <span className="text-left">
+          {note ? (note.length > 60 ? note.slice(0, 60) + "…" : note) : "Add note"}
+        </span>
       </button>
     );
   }
 
   return (
-    <div className="mt-2">
+    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
       <Textarea
         autoFocus
         value={draft}
@@ -135,13 +138,19 @@ function InputTable({
   kind,
   round,
   filterIncomplete,
+  items,
+  setItems,
+  loading,
+  reload,
 }: {
   kind: Kind;
   round: Round;
   filterIncomplete: boolean;
+  items: Row[];
+  setItems: React.Dispatch<React.SetStateAction<Row[]>>;
+  loading: boolean;
+  reload: () => void;
 }) {
-  const [reloadKey, setReloadKey] = useState(0);
-  const { items, setItems, loading } = useLibraryItems(kind, reloadKey);
   const roundIdx = round - 1;
 
   async function handleToggleRound(row: Row) {
@@ -158,7 +167,23 @@ function InputTable({
     try {
       await toggleRound(kind, row.id, round, next);
     } catch {
-      setReloadKey((k) => k + 1);
+      reload();
+    }
+  }
+
+  async function handleMaster(row: Row) {
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.id !== row.id) return it;
+        const rounds = [...it.rounds] as [boolean, boolean, boolean];
+        for (let r = roundIdx; r < 3; r++) rounds[r] = true;
+        return { ...it, rounds };
+      }),
+    );
+    try {
+      await masterItem(kind, row.id, round);
+    } catch {
+      reload();
     }
   }
 
@@ -185,7 +210,6 @@ function InputTable({
       >
         <div>No.</div>
         <div>{kind === "grammar" ? "Grammar point" : "Phrase"}</div>
-        <div className="text-center">Round {round}</div>
         <div>Practice</div>
       </div>
       {visible.length === 0 ? (
@@ -196,6 +220,7 @@ function InputTable({
         visible.map((row) => {
           const locked = roundIdx > 0 && !row.rounds.slice(0, roundIdx).every(Boolean);
           const checked = row.rounds[roundIdx];
+          const canSkipAhead = !locked && !checked && round < 3;
           const statusLabel =
             row.playCount === 0 ? "New" : row.playCount >= 10 ? "Mastered" : "In progress";
           const statusColor =
@@ -207,53 +232,87 @@ function InputTable({
           return (
             <div
               key={row.id}
-              className="grid px-[18px] py-3.5"
+              className="group relative grid px-[18px] py-3.5 transition-colors"
+              onClick={() => !locked && handleToggleRound(row)}
               style={{
                 gridTemplateColumns: GRID_COLS,
                 borderTop: "1px solid var(--color-border-default)",
                 alignItems: "start",
+                cursor: locked ? "default" : "pointer",
+                background: checked ? "var(--color-primary-soft)" : undefined,
               }}
             >
-              <div className="pt-0.5 text-[13px] text-foreground">{row.no}</div>
-              <div>
-                <div className="text-[14px] font-semibold text-foreground">
-                  {row.title}
+              <div
+                className="pt-0.5 text-[13px] text-foreground"
+                style={{ opacity: locked ? 0.35 : 1 }}
+              >
+                {row.no}
+              </div>
+              <div style={{ opacity: locked ? 0.35 : 1 }}>
+                <div className="flex items-start gap-2">
+                  <div className="text-[14px] font-semibold text-foreground">
+                    {row.title}
+                  </div>
+                  {checked && (
+                    <Check
+                      className="mt-[3px] h-3.5 w-3.5 shrink-0"
+                      strokeWidth={3}
+                      style={{ color: "var(--color-primary)" }}
+                    />
+                  )}
                 </div>
                 <div className="text-[12.5px] leading-snug text-muted-foreground">
                   {row.jp}
                 </div>
-                <NoteRow
-                  kind={kind}
-                  id={row.id}
-                  note={row.note}
-                  onChanged={(next) =>
-                    setItems((prev) =>
-                      prev.map((it) => (it.id === row.id ? { ...it, note: next } : it)),
-                    )
-                  }
-                />
+                {!locked && (
+                  <NoteRow
+                    kind={kind}
+                    id={row.id}
+                    note={row.note}
+                    onChanged={(next) =>
+                      setItems((prev) =>
+                        prev.map((it) => (it.id === row.id ? { ...it, note: next } : it)),
+                      )
+                    }
+                  />
+                )}
               </div>
-              <div className="flex justify-center pt-0.5">
-                <button
-                  onClick={() => handleToggleRound(row)}
-                  disabled={locked}
-                  className="flex h-[26px] w-[26px] items-center justify-center rounded-full transition-colors disabled:cursor-default"
-                  style={{
-                    border: `1.5px solid ${locked ? "var(--color-border-default)" : checked ? "var(--color-primary)" : "var(--color-border-default)"}`,
-                    background: locked ? "var(--color-surface-subtle)" : checked ? "var(--color-primary)" : "transparent",
-                    color: locked ? "var(--color-text-secondary)" : "var(--color-surface)",
-                  }}
-                >
-                  {locked ? (
-                    <Lock className="h-3 w-3" />
-                  ) : checked ? (
-                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                  ) : null}
-                </button>
+              <div
+                className="flex items-center justify-between gap-2 pt-0.5"
+                style={{ opacity: locked ? 0.35 : 1 }}
+              >
+                <span className="text-[12.5px] font-semibold" style={{ color: statusColor }}>
+                  {statusLabel}
+                </span>
+                {canSkipAhead && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMaster(row);
+                    }}
+                    title="Mark fully understood — skip remaining rounds"
+                    className="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold opacity-0 transition-opacity group-hover:opacity-100"
+                    style={{
+                      color: "var(--color-accent)",
+                      background: "var(--color-accent-soft)",
+                    }}
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    Skip ahead
+                  </button>
+                )}
               </div>
-              <div className="pt-0.5 text-[12.5px] font-semibold" style={{ color: statusColor }}>
-                {statusLabel}
-              </div>
+
+              {locked && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <span
+                    className="flex h-7 w-7 items-center justify-center rounded-full"
+                    style={{ background: "var(--color-surface)", border: "1px solid var(--color-border-default)" }}
+                  >
+                    <Lock className="h-3.5 w-3.5" style={{ color: "var(--color-text-secondary)" }} />
+                  </span>
+                </div>
+              )}
             </div>
           );
         })
@@ -268,12 +327,18 @@ export default function LibraryInputPage() {
   const [tab, setTab] = useState<Kind>("grammar");
   const [round, setRound] = useState<Round>(1);
   const [filterIncomplete, setFilterIncomplete] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const { items, setItems, loading } = useLibraryItems(tab, reloadKey);
 
   useEffect(() => {
     if (language === "vi") router.replace("/list");
   }, [language, router]);
 
   if (language === "vi") return null;
+
+  const roundCounts = ([1, 2, 3] as Round[]).map(
+    (r) => items.filter((it) => it.rounds[r - 1]).length,
+  );
 
   return (
     <div className="w-full max-w-[980px]">
@@ -317,13 +382,16 @@ export default function LibraryInputPage() {
           <button
             key={r}
             onClick={() => setRound(r)}
-            className="pb-2 pt-2 text-[14px] font-semibold transition-colors"
+            className="flex items-baseline gap-1.5 pb-2 pt-2 text-[14px] font-semibold transition-colors"
             style={{
               color: round === r ? "var(--color-text-primary)" : "var(--color-text-secondary)",
               borderBottom: round === r ? "2px solid var(--color-primary)" : "2px solid transparent",
             }}
           >
             Round {r}
+            <span className="text-[12px] font-medium text-muted-foreground">
+              ({roundCounts[r - 1]}/{items.length})
+            </span>
           </button>
         ))}
         <button
@@ -339,7 +407,15 @@ export default function LibraryInputPage() {
         </button>
       </div>
 
-      <InputTable kind={tab} round={round} filterIncomplete={filterIncomplete} />
+      <InputTable
+        kind={tab}
+        round={round}
+        filterIncomplete={filterIncomplete}
+        items={items}
+        setItems={setItems}
+        loading={loading}
+        reload={() => setReloadKey((k) => k + 1)}
+      />
     </div>
   );
 }

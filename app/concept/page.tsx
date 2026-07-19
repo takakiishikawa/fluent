@@ -5,7 +5,7 @@ export default function ConceptRoute() {
   return (
     <ConceptPage
       className="pt-0 px-0"
-      productName="NativeGo"
+      productName="Fluent"
       productLogo={
         <div className="flex items-center justify-center rounded-md bg-primary p-1.5">
           <RefreshCcw className="h-3.5 w-3.5 text-white" />
@@ -33,7 +33,7 @@ export default function ConceptRoute() {
           {
             title: "インプット",
             description:
-              "英会話レッスン でレッスンを受け、テキストを NativeGo に貼り付ける",
+              "英会話レッスン でレッスンを受け、テキストを Fluent に貼り付ける",
           },
           {
             title: "AI解析",

@@ -13,7 +13,6 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarRail,
   GO_APPS,
   HoverCard,
   HoverCardContent,
@@ -76,7 +75,7 @@ function isActive(href: string, pathname: string) {
 
 const OTHER_APPS = GO_APPS.filter((a) => a.name !== "NativeGo");
 
-export function NativeGoSidebar({
+export function FluentSidebar({
   currentLanguage,
 }: {
   currentLanguage: Language;
@@ -141,7 +140,7 @@ export function NativeGoSidebar({
   );
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="none">
       <SidebarHeader className="px-1.5 py-0">
         <div className="flex items-center gap-2.5 px-1.5 py-2">
           <FluentMark size={30} />
@@ -287,8 +286,6 @@ export function NativeGoSidebar({
           </HoverCardContent>
         </HoverCard>
       </SidebarFooter>
-
-      <SidebarRail />
     </Sidebar>
   );
 }

@@ -695,6 +695,26 @@ export async function toggleRound(
   revalidatePath("/");
 }
 
+// 完全に理解した項目を、残りの Round をすべて完了扱いにして以後のラウンドから除外する
+export async function masterItem(
+  kind: "grammar" | "expression",
+  id: string,
+  fromRound: 1 | 2 | 3,
+): Promise<void> {
+  const supabase = await createClient();
+  const table = kind === "grammar" ? "grammar" : "expressions";
+  const update: Record<string, boolean | string> = {
+    rounds_updated_at: new Date().toISOString(),
+  };
+  for (let r = fromRound; r <= 3; r++) {
+    update[`round${r}_done`] = true;
+  }
+  const { error } = await supabase.from(table).update(update).eq("id", id);
+  if (error) throw error;
+  revalidatePath("/library");
+  revalidatePath("/");
+}
+
 export async function upsertNativeCampLog(
   date: string,
   count: number,

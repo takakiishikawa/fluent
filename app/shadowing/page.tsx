@@ -238,8 +238,6 @@ export default function ShadowingPage() {
     }
   }, [language]);
 
-  const doneCount = videos.filter((v) => v.lapCount >= round).length;
-
   return (
     <div className="w-full max-w-[980px]">
       <div className="mb-1.5 flex items-center justify-between">
@@ -290,22 +288,25 @@ export default function ShadowingPage() {
             className="mb-[22px] flex items-center gap-[22px]"
             style={{ borderBottom: "1px solid var(--color-border-default)" }}
           >
-            {ROUNDS.map((r) => (
-              <button
-                key={r}
-                onClick={() => setRound(r)}
-                className="pb-2 pt-2 text-[14.5px] font-semibold transition-colors"
-                style={{
-                  color: round === r ? "var(--color-text-primary)" : "var(--color-text-secondary)",
-                  borderBottom: round === r ? "2px solid var(--color-primary)" : "2px solid transparent",
-                }}
-              >
-                Round {r}
-              </button>
-            ))}
-            <span className="ml-auto pb-2 text-[13px] text-muted-foreground">
-              {doneCount}/{videos.length} completed
-            </span>
+            {ROUNDS.map((r) => {
+              const count = videos.filter((v) => v.lapCount >= r).length;
+              return (
+                <button
+                  key={r}
+                  onClick={() => setRound(r)}
+                  className="flex items-baseline gap-1.5 pb-2 pt-2 text-[14.5px] font-semibold transition-colors"
+                  style={{
+                    color: round === r ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+                    borderBottom: round === r ? "2px solid var(--color-primary)" : "2px solid transparent",
+                  }}
+                >
+                  Round {r}
+                  <span className="text-[12px] font-medium text-muted-foreground">
+                    ({count}/{videos.length})
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           <div

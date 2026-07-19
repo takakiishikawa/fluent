@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { DesignTokens, Toaster } from "@takaki/go-design-system";
-import { NativeGoShell } from "@/components/layout/native-go-shell";
+import { FluentShell } from "@/components/layout/fluent-shell";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentLanguage } from "@/lib/language";
 import { DarkModeInit } from "@/components/dark-mode-init";
@@ -123,12 +123,12 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full">
         {user ? (
-          <NativeGoShell currentLanguage={currentLanguage}>
+          <FluentShell currentLanguage={currentLanguage}>
             <Suspense>
               <LoginToast />
             </Suspense>
             {children}
-          </NativeGoShell>
+          </FluentShell>
         ) : (
           <main>{children}</main>
         )}

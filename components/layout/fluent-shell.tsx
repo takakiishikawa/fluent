@@ -1,11 +1,11 @@
 "use client";
 
 import { SidebarProvider, SidebarInset } from "@takaki/go-design-system";
-import { NativeGoSidebar } from "./native-go-sidebar";
+import { FluentSidebar } from "./fluent-sidebar";
 import type { Language } from "@/lib/types";
 import { LanguageProvider } from "@/lib/language-context";
 
-export function NativeGoShell({
+export function FluentShell({
   currentLanguage,
   children,
 }: {
@@ -15,7 +15,7 @@ export function NativeGoShell({
   return (
     <LanguageProvider value={currentLanguage}>
       <SidebarProvider defaultOpen style={{ "--sidebar-width": "232px" } as React.CSSProperties}>
-        <NativeGoSidebar currentLanguage={currentLanguage} />
+        <FluentSidebar currentLanguage={currentLanguage} />
         <SidebarInset>
           <main className="@container/main flex flex-1 flex-col gap-4 p-4">
             {children}
