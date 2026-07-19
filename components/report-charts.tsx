@@ -12,7 +12,7 @@ const ReportAreaChart = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[286px] rounded-lg border border-[var(--color-border-default)]" />
+      <div className="h-[286px] rounded-[20px] border border-[var(--color-border-default)]" />
     ),
   },
 );

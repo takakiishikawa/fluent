@@ -62,25 +62,26 @@ export function ActivityHeatmap({
   longest: number;
 }) {
   return (
-    <div className="rounded-[20px] border border-[var(--color-border-default)] bg-card p-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-foreground">
-          12週間のアクティビティ
+    <div
+      className="rounded-[20px] border border-[var(--color-border-default)] bg-[var(--color-surface)] p-[20px_22px]"
+    >
+      <div className="mb-3.5 flex items-baseline justify-between">
+        <h3 className="text-[15px] font-semibold text-foreground">
+          12-week activity
         </h3>
-        <p className="text-[12px] text-muted-foreground">
-          <span className="font-semibold text-foreground">{streak}</span>
-          日連続 · 最長 {longest}日
+        <p className="text-[12.5px] text-muted-foreground">
+          {streak}-day streak · best {longest}
         </p>
       </div>
 
       <TooltipProvider delayDuration={0}>
         <div
-          className="mt-5 grid"
+          className="grid"
           style={{
             gridTemplateColumns: "repeat(12, 1fr)",
             gridTemplateRows: "repeat(7, 1fr)",
             gridAutoFlow: "column",
-            gap: "5px",
+            gap: "4px",
             height: "196px",
           }}
         >
@@ -101,7 +102,7 @@ export function ActivityHeatmap({
                   <div
                     className="cursor-default ring-foreground/30 transition-shadow hover:ring-2"
                     style={{
-                      borderRadius: "3px",
+                      borderRadius: "2px",
                       background: HEAT[lv < 0 ? 0 : lv],
                       opacity: lv < 0 ? 0.4 : 1,
                     }}

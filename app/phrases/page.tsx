@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { cn, EmptyState, PageHeader } from "@takaki/go-design-system";
-import { PhraseTab } from "@/app/list/page";
+import { cn, EmptyState } from "@takaki/go-design-system";
+import { CatalogTable } from "@/components/catalog-table";
 import {
   Coffee,
   ShoppingBag,
@@ -134,12 +134,18 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 function EnPhraseCatalog() {
-  const [reloadKey, setReloadKey] = useState(0);
-  const bumpReload = useCallback(() => setReloadKey((k) => k + 1), []);
   return (
-    <div className="space-y-6">
-      <PageHeader title="フレーズカタログ" />
-      <PhraseTab reloadKey={reloadKey} bumpReload={bumpReload} />
+    <div className="w-full max-w-[980px]">
+      <div
+        className="mb-1.5 text-[12.5px] font-semibold uppercase tracking-[0.06em]"
+        style={{ color: "var(--color-accent)" }}
+      >
+        Library
+      </div>
+      <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
+        Phrase catalog
+      </h1>
+      <CatalogTable kind="expression" />
     </div>
   );
 }

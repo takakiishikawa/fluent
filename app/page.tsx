@@ -6,94 +6,6 @@ import {
   type HeatmapCell,
 } from "@/components/activity-heatmap";
 import { StreakPopup } from "@/components/streak-popup";
-import { ChevronRight, Repeat2, Play, GraduationCap } from "lucide-react";
-
-// ─── CTACard（今日の練習に進むカード） ─────────────────────────────────────
-
-function CTACard({
-  href,
-  icon,
-  label,
-  sub,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  sub: string;
-}) {
-  return (
-    <Link href={href} className="group block">
-      <div className="flex items-center gap-3 rounded-xl border border-[var(--color-border-default)] bg-card p-4 transition-all hover:border-[var(--color-border-strong)] hover:shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--color-surface-subtle)] text-foreground">
-          {icon}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-semibold text-foreground">{label}</p>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">{sub}</p>
-        </div>
-        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-      </div>
-    </Link>
-  );
-}
-
-// ─── MetricCard（今週のサマリー） ───────────────────────────────────────────
-
-function MetricCard({
-  label,
-  value,
-  unit,
-  ratio,
-  weekDiff,
-}: {
-  label: string;
-  value: number;
-  unit: string;
-  ratio: number | null;
-  weekDiff: number | null;
-}) {
-  const reached = ratio != null && ratio >= 100;
-  const diffColor =
-    weekDiff == null || weekDiff === 0
-      ? "text-muted-foreground"
-      : weekDiff > 0
-        ? "text-[color:var(--color-success)]"
-        : "text-destructive";
-
-  return (
-    <div className="rounded-xl border border-[var(--color-border-default)] bg-card p-4">
-      <div className="text-[13px] text-muted-foreground">{label}</div>
-      <div className="mt-2 flex items-baseline gap-1.5">
-        <span className="text-[32px] font-semibold leading-none tracking-[-0.035em] tabular-nums text-foreground">
-          {value}
-        </span>
-        <span className="text-[13px] text-muted-foreground">{unit}</span>
-        {weekDiff != null && (
-          <span className={`ml-1.5 text-[12px] ${diffColor}`}>
-            先週比 {weekDiff > 0 ? "+" : ""}
-            {weekDiff}
-          </span>
-        )}
-      </div>
-
-      {ratio != null && (
-        <div className="mt-4 flex items-center gap-2.5">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-subtle)]">
-            <div
-              className={`h-full rounded-full ${
-                reached ? "bg-[#4d6b3a] dark:bg-[#8fb574]" : "bg-foreground"
-              }`}
-              style={{ width: `${Math.min(ratio, 100)}%` }}
-            />
-          </div>
-          <span className="text-[12px] font-semibold tabular-nums text-foreground">
-            {ratio}%
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -141,9 +53,9 @@ function longestStreak(dates: string[]): number {
   return best;
 }
 
-function ratioOf(value: number, baseline: number | undefined): number | null {
-  if (!baseline || baseline <= 0) return null;
-  return Math.round((value / baseline) * 100);
+function pctOf(value: number, baseline: number | undefined, fallbackTarget: number): number {
+  const target = baseline && baseline > 0 ? baseline : fallbackTarget;
+  return Math.min(100, Math.round((value / target) * 100));
 }
 
 const MONTH_ABBR = [
@@ -151,11 +63,96 @@ const MONTH_ABBR = [
   "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
 ];
 
+// ─── QuickCard ─────────────────────────────────────────────────────────────────
+
+function QuickCard({
+  href,
+  tileColor,
+  title,
+  subtitle,
+  meta,
+  metaColor,
+}: {
+  href: string;
+  tileColor: string;
+  title: string;
+  subtitle: string;
+  meta: string;
+  metaColor: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex min-w-0 flex-col gap-2.5 rounded-[20px] border border-[var(--color-border-default)] bg-[var(--color-surface)] p-[16px_18px] transition-transform hover:-translate-y-0.5"
+      style={{ boxShadow: "var(--shadow-md)" }}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <span
+          className="h-[38px] w-[38px] shrink-0 rounded-[12px]"
+          style={{ background: tileColor }}
+        />
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="truncate text-[15.5px] font-semibold text-foreground">
+            {title}
+          </div>
+          <div className="truncate text-[13px] text-muted-foreground">
+            {subtitle}
+          </div>
+        </div>
+      </div>
+      <div
+        className="self-end text-[13px] font-semibold"
+        style={{ color: metaColor }}
+      >
+        {meta}
+      </div>
+    </Link>
+  );
+}
+
+// ─── WeekStatCard ────────────────────────────────────────────────────────────
+
+function WeekStatCard({
+  label,
+  value,
+  unit,
+  delta,
+  pct,
+  color,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+  delta: string;
+  pct: number;
+  color: string;
+}) {
+  return (
+    <div className="rounded-[20px] border border-[var(--color-border-default)] bg-[var(--color-surface)] p-[18px_20px]">
+      <div className="mb-2 text-[13px] text-muted-foreground">{label}</div>
+      <div className="mb-2.5 flex items-baseline gap-1.5">
+        <span className="text-[26px] font-bold text-foreground">{value}</span>
+        <span className="text-[13px] text-muted-foreground">{unit}</span>
+        <span className="ml-auto text-[12.5px] text-muted-foreground">
+          {delta}
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-subtle)]">
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${pct}%`, background: color }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
   const supabase = await createClient();
   const currentLanguage = await getCurrentLanguage();
+  const isVi = currentLanguage === "vi";
 
   const now = new Date();
   const todayStr = toStr(now);
@@ -166,43 +163,70 @@ export default async function HomePage() {
   const heatmapStartStr = toStr(heatmapStart);
   const rangeStartStr = toStr(addDays(todayUTC, -6));
   const prev7StartStr = toStr(addDays(todayUTC, -13));
+  const weekAgoISO = addDays(now, -7).toISOString();
+
+  const dueCountQuery = (table: string) =>
+    supabase
+      .from(table)
+      .select("id", { count: "exact", head: true })
+      .eq("language", currentLanguage)
+      .lt("play_count", 10);
 
   const [
     allDatesResult,
     rangeLogsResult,
     youtubeLogsResult,
     settingsResult,
+    grammarDueResult,
+    expressionDueResult,
+    wordDueResult,
+    outputTopicsResult,
+    fixedChannelResult,
     efSetResult,
   ] = await Promise.all([
-      supabase
-        .from("practice_logs")
-        .select("practiced_at")
-        .eq("language", currentLanguage),
-      supabase
-        .from("practice_logs")
-        .select(
-          "practiced_at, grammar_done_count, expression_done_count, word_done_count",
-        )
-        .eq("language", currentLanguage)
-        .gte("practiced_at", heatmapStartStr)
-        .lte("practiced_at", todayStr)
-        .order("practiced_at"),
-      supabase
-        .from("youtube_logs")
-        .select("completed_at, youtube_videos(duration)")
-        .eq("language", currentLanguage)
-        .gte(
-          "completed_at",
-          new Date(heatmapStartStr + "T00:00:00").toISOString(),
-        )
-        .lte("completed_at", new Date(todayStr + "T23:59:59").toISOString()),
-      supabase.from("user_settings").select("*").maybeSingle(),
-      supabase
-        .from("ef_set_scores")
-        .select("tested_at")
-        .order("tested_at", { ascending: false })
-        .limit(1),
-    ]);
+    supabase
+      .from("practice_logs")
+      .select("practiced_at")
+      .eq("language", currentLanguage),
+    supabase
+      .from("practice_logs")
+      .select(
+        "practiced_at, grammar_done_count, expression_done_count, word_done_count",
+      )
+      .eq("language", currentLanguage)
+      .gte("practiced_at", heatmapStartStr)
+      .lte("practiced_at", todayStr)
+      .order("practiced_at"),
+    supabase
+      .from("youtube_logs")
+      .select("completed_at, youtube_videos(duration)")
+      .eq("language", currentLanguage)
+      .gte(
+        "completed_at",
+        new Date(heatmapStartStr + "T00:00:00").toISOString(),
+      )
+      .lte("completed_at", new Date(todayStr + "T23:59:59").toISOString()),
+    supabase.from("user_settings").select("*").maybeSingle(),
+    dueCountQuery("grammar"),
+    dueCountQuery("expressions"),
+    isVi ? dueCountQuery("words") : Promise.resolve({ count: 0 }),
+    supabase
+      .from("output_topics")
+      .select("response, updated_at")
+      .eq("language", currentLanguage),
+    supabase
+      .from("youtube_channels")
+      .select("id")
+      .eq("language", currentLanguage)
+      .eq("archived", false)
+      .order("created_at")
+      .limit(1),
+    supabase
+      .from("ef_set_scores")
+      .select("tested_at")
+      .order("tested_at", { ascending: false })
+      .limit(1),
+  ]);
 
   type RangeLog = {
     practiced_at: string;
@@ -251,9 +275,7 @@ export default async function HomePage() {
     )
     .reduce((s, l) => s + dayTotal(l), 0);
   const hasPrevData = rangeLogs.some((l) => l.practiced_at < rangeStartStr);
-  const repeatingDiff = hasPrevData
-    ? weeklyRepeating - prevWeeklyRepeating
-    : null;
+  const repeatingDiff = hasPrevData ? weeklyRepeating - prevWeeklyRepeating : null;
 
   function parseDurToMin(dur: string | null | undefined): number {
     if (!dur) return 0;
@@ -275,23 +297,58 @@ export default async function HomePage() {
     if (dateStr >= rangeStartStr) weeklyShadowing += min;
     else if (dateStr >= prev7StartStr) prevWeeklyShadowing += min;
   }
-  const shadowingDiff = hasPrevData
-    ? weeklyShadowing - prevWeeklyShadowing
-    : null;
+  const shadowingDiff = hasPrevData ? weeklyShadowing - prevWeeklyShadowing : null;
 
   const settings = settingsResult.data ?? null;
-  const isEn = currentLanguage === "en";
 
-  // ── EF SET 受検バナー ──
+  // ── Output ──
+  const outputTopics = outputTopicsResult.data ?? [];
+  const outputReadyCount = outputTopics.filter(
+    (t) => t.response.trim().length > 0,
+  ).length;
+  const outputThisWeek = outputTopics.filter(
+    (t) => t.response.trim().length > 0 && t.updated_at >= weekAgoISO,
+  ).length;
+
+  // ── Repeating due ──
+  const repeatingDue =
+    (grammarDueResult.count ?? 0) +
+    (expressionDueResult.count ?? 0) +
+    (wordDueResult.count ?? 0);
+
+  // ── Shadowing done/total（固定チャンネル・現在の周回） ──
+  const fixedChannelId = fixedChannelResult.data?.[0]?.id ?? null;
+  let shadowingDone = 0;
+  let shadowingTotal = 0;
+  if (fixedChannelId) {
+    const [videosRes, logsRes] = await Promise.all([
+      supabase
+        .from("youtube_videos")
+        .select("id", { count: "exact", head: true })
+        .eq("channel_id", fixedChannelId),
+      supabase
+        .from("youtube_logs")
+        .select("video_id")
+        .eq("language", currentLanguage),
+    ]);
+    shadowingTotal = videosRes.count ?? 0;
+    shadowingDone = new Set((logsRes.data ?? []).map((l) => l.video_id)).size;
+  }
+
+  // ── 次の金曜日までの日数 ──
+  const dow = now.getDay(); // 0=Sun..6=Sat
+  const daysUntilFriday = (5 - dow + 7) % 7 || 7;
+
+  // ── EF SET 受検時期チェック ──
   const efSetIntervalMonths = settings?.ef_set_interval_months ?? 3;
   const latestEfSet =
     (efSetResult.data as { tested_at: string }[] | null)?.[0]?.tested_at ??
     null;
-  let efSetDue = true;
+  let efSetDue = !isVi;
   if (latestEfSet) {
     const [ey, em, ed] = latestEfSet.split("-").map(Number);
     const dueDate = new Date(ey, em - 1 + efSetIntervalMonths, ed);
-    efSetDue = now >= dueDate;
+    efSetDue = !isVi && now >= dueDate;
   }
 
   // ── 12週間ヒートマップ ──
@@ -322,86 +379,114 @@ export default async function HomePage() {
     }
   }
 
-  const dateLabel = new Intl.DateTimeFormat("ja-JP", {
+  const dateLabel = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
     month: "long",
     day: "numeric",
-    weekday: "short",
   }).format(now);
 
+  const repeatingPct = pctOf(weeklyRepeating, settings?.baseline_repeating, 150);
+  const shadowingPct = pctOf(weeklyShadowing, settings?.baseline_shadowing, 60);
+  const outputPct = Math.min(100, Math.round((outputThisWeek / 3) * 100));
+
   return (
-    <div className="w-full max-w-3xl">
+    <div className="w-full max-w-[980px]">
       <StreakPopup streak={streak} />
 
-      <header className="mb-6">
-        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-          ダッシュボード
-        </h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">{dateLabel}</p>
-      </header>
+      <div className="mb-1.5 text-[12.5px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--color-accent)" }}>
+        {dateLabel}
+      </div>
+      <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
+        Good to see you back
+      </h1>
 
-      <div className="space-y-4">
-        {/* EF SET 受検アナウンス */}
-        {efSetDue && (
-          <Link
-            href="/report"
-            className="group flex items-center gap-3 rounded-xl border border-[color:var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-4 py-3 transition-colors hover:bg-[var(--color-primary)]/15"
-          >
-            <GraduationCap className="h-5 w-5 shrink-0 text-[color:var(--color-primary)]" />
-            <div className="min-w-0 flex-1 text-[13px]">
-              <span className="font-semibold text-foreground">
-                EF SET の受検時期です
-              </span>
-              <span className="text-muted-foreground">
-                {" — "}
-                {efSetIntervalMonths}ヶ月ごとの英語力チェック。レポートからスコアを記録すると非表示になります。
-              </span>
-            </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        )}
+      <Link
+        href="/output"
+        className="mb-[22px] flex items-center justify-between gap-4 rounded-[20px] px-5 py-4 text-[14.5px] text-foreground transition-opacity hover:opacity-90"
+        style={{ background: "var(--color-primary-soft)" }}
+      >
+        <span className="leading-relaxed">
+          <strong>Friday lesson in {daysUntilFriday} days.</strong>{" "}
+          You have {outputReadyCount} Output responses ready to speak from.
+        </span>
+        <span
+          className="shrink-0 font-semibold whitespace-nowrap"
+          style={{ color: "var(--color-primary)" }}
+        >
+          Review →
+        </span>
+      </Link>
 
-        {/* 練習への導線 */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <CTACard
-            href="/repeating"
-            icon={<Repeat2 className="h-5 w-5" />}
-            label="リピーティング"
-            sub={isEn ? "文法・フレーズ" : "文法・フレーズ・単語"}
-          />
-          <CTACard
-            href="/shadowing"
-            icon={<Play className="h-5 w-5" />}
-            label="シャドーイング"
-            sub="YouTubeを見る"
-          />
-        </div>
+      {efSetDue && (
+        <Link
+          href="/report"
+          className="mb-[22px] -mt-3 flex items-center gap-2 text-[12.5px] font-medium"
+          style={{ color: "var(--color-accent)" }}
+        >
+          EF SET の受検時期です — レポートでスコアを記録 →
+        </Link>
+      )}
 
-        {/* 今週の数字 */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <MetricCard
-            label="リピーティング（直近7日間）"
-            value={weeklyRepeating}
-            unit="回"
-            ratio={ratioOf(weeklyRepeating, settings?.baseline_repeating)}
-            weekDiff={repeatingDiff}
-          />
-          <MetricCard
-            label="シャドーイング（直近7日間）"
-            value={weeklyShadowing}
-            unit="分"
-            ratio={ratioOf(weeklyShadowing, settings?.baseline_shadowing)}
-            weekDiff={shadowingDiff}
-          />
-        </div>
-
-        {/* アクティビティ */}
-        <ActivityHeatmap
-          cells={heatmapCells}
-          monthLabels={monthLabels}
-          streak={streak}
-          longest={longest}
+      <div className="mb-[22px] grid grid-cols-3 gap-4">
+        <QuickCard
+          href="/repeating"
+          tileColor="var(--color-primary-soft)"
+          title="Repeating"
+          subtitle={isVi ? "Grammar, phrases & words" : "Grammar & phrases"}
+          meta={`${repeatingDue} due`}
+          metaColor="var(--color-primary)"
+        />
+        <QuickCard
+          href="/shadowing"
+          tileColor="var(--color-accent-soft)"
+          title="Shadowing"
+          subtitle="YouTube practice"
+          meta={`${shadowingDone}/${shadowingTotal}`}
+          metaColor="var(--color-accent)"
+        />
+        <QuickCard
+          href="/output"
+          tileColor="var(--color-surface-subtle)"
+          title="Output"
+          subtitle="Write from a topic"
+          meta={`${outputReadyCount} written`}
+          metaColor="var(--color-text-primary)"
         />
       </div>
+
+      <div className="mb-[22px] grid grid-cols-3 gap-4">
+        <WeekStatCard
+          label="Repeating this week"
+          value={weeklyRepeating}
+          unit="reps"
+          delta={repeatingDiff == null ? "" : `${repeatingDiff > 0 ? "+" : ""}${repeatingDiff} vs last week`}
+          pct={repeatingPct}
+          color="var(--color-primary)"
+        />
+        <WeekStatCard
+          label="Shadowing this week"
+          value={weeklyShadowing}
+          unit="min"
+          delta={shadowingDiff == null ? "" : `${shadowingDiff > 0 ? "+" : ""}${shadowingDiff} vs last week`}
+          pct={shadowingPct}
+          color="var(--color-accent)"
+        />
+        <WeekStatCard
+          label="Output entries"
+          value={outputThisWeek}
+          unit="written"
+          delta="this week"
+          pct={outputPct}
+          color="var(--color-text-primary)"
+        />
+      </div>
+
+      <ActivityHeatmap
+        cells={heatmapCells}
+        monthLabels={monthLabels}
+        streak={streak}
+        longest={longest}
+      />
     </div>
   );
 }

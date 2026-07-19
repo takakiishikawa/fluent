@@ -35,7 +35,7 @@ export function ReportAreaChart({
   height?: number;
 }) {
   return (
-    <Card className="rounded-xl border border-[var(--color-border-default)]">
+    <Card className="rounded-[20px] border border-[var(--color-border-default)]">
       <CardHeader className="pb-1 pt-4 px-5">
         <CardTitle className="text-[13px] font-semibold tracking-[-0.01em] text-foreground">
           {title}

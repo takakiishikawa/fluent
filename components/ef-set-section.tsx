@@ -189,7 +189,7 @@ export function EfSetSection({ scores }: { scores: EfSetScore[] }) {
   }
 
   return (
-    <div className="rounded-xl border border-[var(--color-border-default)] bg-card">
+    <div className="rounded-[20px] border border-[var(--color-border-default)] bg-card">
       {/* ヘッダー */}
       <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border-default)] px-5 py-4">
         <div>

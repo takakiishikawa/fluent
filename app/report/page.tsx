@@ -47,18 +47,18 @@ export default async function ReportPage() {
   const efSetScores: EfSetScore[] = (efSetResult.data ?? []) as EfSetScore[];
 
   return (
-    <div className="w-full max-w-5xl">
-      {/* ヘッダー */}
-      <header className="mb-8">
-        <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-foreground">
-          レポート
-        </h1>
-        <p className="mt-1.5 text-[13px] text-muted-foreground">
-          学習量{isEn ? "とテストスコア" : ""}の推移
-        </p>
-      </header>
+    <div className="w-full max-w-[980px]">
+      <div
+        className="mb-1.5 text-[12.5px] font-semibold uppercase tracking-[0.06em]"
+        style={{ color: "var(--color-accent)" }}
+      >
+        Report
+      </div>
+      <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
+        Progress over time
+      </h1>
 
-      <div className="space-y-5">
+      <div className="space-y-4">
         {/* EF SET は英語学習時のみ */}
         {isEn && <EfSetSection scores={efSetScores} />}
         <ReportCharts logs={logs} youtubeLogs={youtubeLogs} showWord={!isEn} />

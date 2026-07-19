@@ -5,16 +5,11 @@ import { createClient } from "@/lib/supabase/client";
 import {
   Button,
   Input,
-  PageHeader,
   FormActions,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  Badge,
 } from "@takaki/go-design-system";
 import { Plus, ExternalLink, CheckCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -179,20 +174,26 @@ export default function ShadowingPage() {
   const doneCount = videos.filter((v) => v.lapCount >= round).length;
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <PageHeader
-        title={channel?.channel_name || "シャドーイング"}
-        actions={
-          <Button
-            onClick={() => setShowAddVideoModal(true)}
-            size="sm"
-            variant="outline"
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            動画を追加
-          </Button>
-        }
-      />
+    <div className="w-full max-w-[980px]">
+      <div className="mb-1.5 flex items-center justify-between">
+        <div
+          className="text-[12.5px] font-semibold uppercase tracking-[0.06em]"
+          style={{ color: "var(--color-accent)" }}
+        >
+          Shadowing
+        </div>
+        <Button
+          onClick={() => setShowAddVideoModal(true)}
+          size="sm"
+          variant="outline"
+        >
+          <Plus className="h-4 w-4 mr-1.5" />
+          動画を追加
+        </Button>
+      </div>
+      <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
+        {channel?.channel_name || "シャドーイング"}
+      </h1>
 
       {loading ? (
         <div className="text-muted-foreground text-sm">読み込み中...</div>
@@ -205,19 +206,26 @@ export default function ShadowingPage() {
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between">
-            <Tabs value={String(round)} onValueChange={(v) => setRound(Number(v) as Round)}>
-              <TabsList>
-                {ROUNDS.map((r) => (
-                  <TabsTrigger key={r} value={String(r)}>
-                    Round {r}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-            <Badge variant="secondary" className="rounded-full tabular-nums">
+          <div
+            className="mb-[22px] flex items-center gap-[22px]"
+            style={{ borderBottom: "1px solid var(--color-border-default)" }}
+          >
+            {ROUNDS.map((r) => (
+              <button
+                key={r}
+                onClick={() => setRound(r)}
+                className="pb-2 pt-2 text-[14.5px] font-semibold transition-colors"
+                style={{
+                  color: round === r ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+                  borderBottom: round === r ? "2px solid var(--color-primary)" : "2px solid transparent",
+                }}
+              >
+                Round {r}
+              </button>
+            ))}
+            <span className="ml-auto pb-2 text-[13px] text-muted-foreground">
               {doneCount}/{videos.length} completed
-            </Badge>
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

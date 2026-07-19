@@ -12,7 +12,6 @@ import {
   DialogTitle,
   DialogFooter,
   EmptyState,
-  cn,
   toast,
 } from "@takaki/go-design-system";
 import { Plus, PenLine, Trash2 } from "lucide-react";
@@ -118,82 +117,95 @@ export default function OutputPage() {
   }
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-6rem)] max-w-5xl">
-      {/* 左カラム：トピック一覧 */}
-      <div className="w-[230px] shrink-0 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[16px] font-bold text-foreground">アウトプット</h1>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7"
-            onClick={() => setShowNewModal(true)}
-            aria-label="トピックを追加"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+    <div className="w-full max-w-[980px]">
+      <div className="mb-1.5 flex items-center justify-between">
+        <div
+          className="text-[12.5px] font-semibold uppercase tracking-[0.06em]"
+          style={{ color: "var(--color-accent)" }}
+        >
+          Output
         </div>
-        <div className="flex-1 overflow-y-auto space-y-1">
+        <Button size="sm" variant="outline" onClick={() => setShowNewModal(true)}>
+          <Plus className="h-4 w-4 mr-1.5" />
+          トピックを追加
+        </Button>
+      </div>
+      <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
+        Speak from your own words
+      </h1>
+
+      <div
+        className="grid items-start gap-[22px]"
+        style={{ gridTemplateColumns: "230px 1fr" }}
+      >
+        {/* 左カラム：トピック一覧 */}
+        <div
+          className="min-h-[500px] rounded-[20px] p-2"
+          style={{
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-border-default)",
+          }}
+        >
           {topics.map((t) => {
             const written = t.response.trim().length > 0;
+            const isActive = t.id === activeId;
             return (
               <button
                 key={t.id}
                 onClick={() => setActiveId(t.id)}
-                className={cn(
-                  "w-full text-left rounded-[12px] px-3 py-2.5 transition-colors",
-                  t.id === activeId
-                    ? "bg-[var(--color-primary-soft)]"
-                    : "hover:bg-[var(--color-surface-subtle)]",
-                )}
+                className="mb-0.5 w-full rounded-[12px] px-4 py-3.5 text-left transition-colors"
+                style={{
+                  background: isActive ? "var(--color-primary-soft)" : "transparent",
+                }}
               >
-                <p className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
+                <p
+                  className="mb-1 text-[14px] font-semibold leading-snug"
+                  style={{ color: isActive ? "var(--color-primary)" : "var(--color-text-primary)" }}
+                >
                   {t.title}
                 </p>
-                <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span>{written ? "Written" : "Not started"}</span>
-                  <span>·</span>
-                  <span>{formatDate(t.created_at)}</span>
+                <div className="text-[12px] text-muted-foreground">
+                  {written ? "Written" : "Not started"} · {formatDate(t.created_at)}
                 </div>
               </button>
             );
           })}
         </div>
-      </div>
 
-      {/* 右カラム：エディタ */}
-      <div className="flex-1 min-w-0">
+        {/* 右カラム：エディタ */}
         {!active ? (
           <EmptyState
             icon={<PenLine className="h-8 w-8" />}
             title="トピックがありません"
-            description="「+」からトピックを追加して、レッスン前に話す内容を書いてみましょう"
+            description="「トピックを追加」から追加して、レッスン前に話す内容を書いてみましょう"
           />
         ) : (
           <div
-            className="rounded-[20px] p-9 h-full flex flex-col"
+            className="rounded-[20px] p-[26px_30px]"
             style={{
               background: "var(--color-surface)",
-              boxShadow: "var(--shadow-md)",
+              border: "1px solid var(--color-border-default)",
             }}
           >
-            <p className="text-xs text-muted-foreground mb-2">
+            <p className="mb-1.5 text-[12.5px] text-muted-foreground">
               {formatDate(active.created_at)}
             </p>
             <InlineEdit
               value={active.title}
               onChange={handleTitleChange}
-              className="text-[24px] font-bold text-foreground mb-5"
+              className="mb-4 w-full border-0 border-b border-dashed pb-3.5 text-[18px] font-bold text-foreground"
+              inputClassName="border-0 border-b border-dashed pb-3.5 text-[18px] font-bold"
               placeholder="トピックを入力..."
             />
             <Textarea
               value={response}
               onChange={(e) => setResponse(e.target.value)}
               placeholder="自分の言葉で英語の回答を書いてみましょう..."
-              className="flex-1 min-h-[200px] resize-none text-[15px] leading-relaxed"
+              className="min-h-[200px] w-full resize-y text-[15px] leading-relaxed"
+              style={{ background: "var(--color-background)" }}
             />
-            <div className="flex items-center justify-between mt-4">
-              <span className="text-xs text-muted-foreground tabular-nums">
+            <div className="mt-3.5 flex items-center justify-between">
+              <span className="text-[12.5px] text-muted-foreground tabular-nums">
                 {wordCount(response)} words
               </span>
               <div className="flex items-center gap-2">

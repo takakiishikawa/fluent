@@ -39,6 +39,7 @@ export interface Grammar {
   topic_label: string | null;
   topic_icon: string | null;
   pattern_quote: string | null;
+  understood: boolean;
 }
 
 export interface Expression {
@@ -61,6 +62,7 @@ export interface Expression {
   topic_label: string | null;
   topic_icon: string | null;
   pattern_quote: string | null;
+  understood: boolean;
 }
 
 export interface Word {

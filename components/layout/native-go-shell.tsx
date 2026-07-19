@@ -19,7 +19,7 @@ export function NativeGoShell({
 }) {
   return (
     <LanguageProvider value={currentLanguage}>
-      <SidebarProvider defaultOpen>
+      <SidebarProvider defaultOpen style={{ "--sidebar-width": "232px" } as React.CSSProperties}>
         <NativeGoSidebar currentLanguage={currentLanguage} />
         <SidebarInset>
           <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">

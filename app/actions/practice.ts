@@ -661,6 +661,23 @@ export async function detectPatternQuote(
   return quote;
 }
 
+export async function toggleUnderstood(
+  kind: "grammar" | "expression",
+  id: string,
+  next: boolean,
+): Promise<void> {
+  const supabase = await createClient();
+  const table = kind === "grammar" ? "grammar" : "expressions";
+  const { error } = await supabase
+    .from(table)
+    .update({ understood: next })
+    .eq("id", id);
+  if (error) throw error;
+  revalidatePath("/list");
+  revalidatePath("/grammar");
+  revalidatePath("/phrases");
+}
+
 export async function upsertNativeCampLog(
   date: string,
   count: number,

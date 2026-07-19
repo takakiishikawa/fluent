@@ -12,69 +12,44 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  AppSwitcher,
   GO_APPS,
   UserMenu,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@takaki/go-design-system";
-import {
-  Home,
-  Repeat2,
-  Volume2,
-  MessagesSquare,
-  BookOpen,
-  PenLine,
-  BarChart3,
-  Settings,
-  Sun,
-  Moon,
-} from "lucide-react";
+import { Settings, Sun, Moon, ExternalLink } from "lucide-react";
 import type { Language } from "@/lib/types";
 import { LanguageSwitch } from "./language-switch";
+import { FluentMark } from "@/components/brand/fluent-mark";
+
+type Shape = "square" | "circle";
 
 type NavItem = {
   href: string;
   label: string;
-  icon: typeof Home;
+  shape: Shape;
   /** 表示対象の言語。未指定なら全言語で表示 */
   languages?: Language[];
 };
 
-/** プライマリナビ（常時表示） */
+/** プライマリナビ（常時表示）— アイコンは色付きドット（design_handoff_fluent_redesign 準拠） */
 const primaryNavItems: NavItem[] = [
-  { href: "/", label: "ダッシュボード", icon: Home },
-  { href: "/repeating", label: "リピーティング", icon: Repeat2 },
-  { href: "/shadowing", label: "シャドーイング", icon: Volume2 },
-  { href: "/output", label: "アウトプット", icon: PenLine },
-  { href: "/grammar", label: "文法", icon: BookOpen, languages: ["en"] },
-  {
-    href: "/phrases",
-    label: "フレーズ",
-    icon: MessagesSquare,
-    languages: ["vi"],
-  },
-  {
-    href: "/list",
-    label: "ライブラリ",
-    icon: BookOpen,
-    languages: ["vi"],
-  },
+  { href: "/", label: "Dashboard", shape: "square" },
+  { href: "/repeating", label: "Repeating", shape: "circle" },
+  { href: "/shadowing", label: "Shadowing", shape: "square" },
+  { href: "/output", label: "Output", shape: "circle" },
+  { href: "/grammar", label: "Grammar", shape: "square", languages: ["en"] },
+  { href: "/phrases", label: "Phrases", shape: "circle", languages: ["vi"] },
+  { href: "/list", label: "Library", shape: "square", languages: ["vi"] },
 ];
 
 /** プロフィール行ホバーで出すポップオーバー内ナビ */
 const popoverNavItems: NavItem[] = [
-  {
-    href: "/phrases",
-    label: "フレーズカタログ",
-    icon: MessagesSquare,
-    languages: ["en"],
-  },
-  { href: "/report", label: "レポート", icon: BarChart3 },
+  { href: "/phrases", label: "Phrases", shape: "circle", languages: ["en"] },
+  { href: "/report", label: "Report", shape: "square" },
 ];
 
 function isActive(href: string, pathname: string) {
@@ -85,6 +60,8 @@ function isActive(href: string, pathname: string) {
   if (href === "/list") return pathname === "/list";
   return pathname.startsWith(href);
 }
+
+const OTHER_APPS = GO_APPS.filter((a) => a.name !== "NativeGo");
 
 export function NativeGoSidebar({
   currentLanguage,
@@ -121,7 +98,7 @@ export function NativeGoSidebar({
     return () => obs.disconnect();
   }, []);
 
-  // Shadowing のナビラベルを固定チャンネル（講師）名に差し替える
+  // Shadowing のナビラベルを固定チャンネル（講師）名の下の名前に差し替える
   useEffect(() => {
     supabase
       .from("youtube_channels")
@@ -155,24 +132,52 @@ export function NativeGoSidebar({
 
   return (
     <Sidebar>
-      <SidebarHeader>
-        <AppSwitcher currentApp="NativeGo" apps={GO_APPS} placement="bottom" />
+      <SidebarHeader className="px-1.5 py-0">
+        <div className="flex items-center gap-2.5 px-1.5 py-2">
+          <FluentMark size={30} />
+          <span
+            className="truncate text-[18px] font-bold text-foreground"
+            style={{ fontFamily: "var(--font-sans)" }}
+          >
+            Fluent
+          </span>
+        </div>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {visiblePrimary.map(({ href, label, icon: Icon }) => (
-                <SidebarMenuItem key={href}>
-                  <SidebarMenuButton asChild isActive={isActive(href, pathname)}>
-                    <Link href={href}>
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {href === "/shadowing" && channelName ? channelName : label}
+            <SidebarMenu className="gap-0.5">
+              {visiblePrimary.map(({ href, label, shape }) => {
+                const active = isActive(href, pathname);
+                const shownLabel =
+                  href === "/shadowing" && channelName
+                    ? channelName.split(" ")[0]
+                    : label;
+                return (
+                  <SidebarMenuItem key={href}>
+                    <Link
+                      href={href}
+                      className={`flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-[14.5px] font-medium transition-colors ${
+                        active
+                          ? "bg-[var(--color-primary-soft)] font-semibold text-[color:var(--color-primary)]"
+                          : "text-muted-foreground hover:bg-[var(--color-surface-subtle)]"
+                      }`}
+                    >
+                      <span
+                        className="h-2 w-2 shrink-0"
+                        style={{
+                          borderRadius: shape === "circle" ? "50%" : 3,
+                          background: active
+                            ? "var(--color-primary)"
+                            : "var(--color-text-secondary)",
+                        }}
+                      />
+                      {shownLabel}
                     </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -204,28 +209,48 @@ export function NativeGoSidebar({
                     icon: isDark ? Moon : Sun,
                     onSelect: toggleTheme,
                   },
+                  ...OTHER_APPS.map((app) => ({
+                    title: app.name,
+                    icon: app.icon ?? ExternalLink,
+                    onSelect: () => {
+                      window.location.href = app.url;
+                    },
+                  })),
                 ]}
                 signOut={{ onSelect: handleSignOut }}
               />
             </div>
           </HoverCardTrigger>
           {visiblePopover.length > 0 && (
-            <HoverCardContent
-              side="top"
-              align="start"
-              className="w-48 p-1.5"
-            >
-              <div className="flex flex-col">
-                {visiblePopover.map(({ href, label, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-foreground hover:bg-[var(--color-sidebar-accent)] transition-colors"
-                  >
-                    <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    {label}
-                  </Link>
-                ))}
+            <HoverCardContent side="top" align="start" className="w-48 p-1">
+              <div className="flex flex-col gap-0.5">
+                {visiblePopover.map(({ href, label, shape }) => {
+                  const active =
+                    (pathname === "/phrases" && href === "/phrases") ||
+                    (pathname === "/report" && href === "/report");
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={`flex items-center gap-3 rounded-[12px] px-3 py-2 text-[13.5px] font-medium transition-colors ${
+                        active
+                          ? "bg-[var(--color-primary-soft)] font-semibold text-[color:var(--color-primary)]"
+                          : "text-muted-foreground hover:bg-[var(--color-surface-subtle)]"
+                      }`}
+                    >
+                      <span
+                        className="h-2 w-2 shrink-0"
+                        style={{
+                          borderRadius: shape === "circle" ? "50%" : 3,
+                          background: active
+                            ? "var(--color-primary)"
+                            : "var(--color-text-secondary)",
+                        }}
+                      />
+                      {label}
+                    </Link>
+                  );
+                })}
               </div>
             </HoverCardContent>
           )}

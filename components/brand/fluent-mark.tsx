@@ -1,46 +1,93 @@
-export function FluentMark({ size = 24 }: { size?: number }) {
+/** Fluent ロゴマーク: 角丸タイル内に3つの円が横並び（5px/7px/5px, gap 3px）。 */
+export function FluentMark({
+  size = 30,
+  className,
+  style,
+}: {
+  size?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   return (
     <div
+      className={className}
       style={{
         width: size,
         height: size,
-        borderRadius: size * 0.28,
+        borderRadius: size * 0.3,
         background: "var(--color-primary)",
-        position: "relative",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: size * 0.1,
         flexShrink: 0,
+        ...style,
       }}
     >
       <span
         style={{
-          position: "absolute",
-          width: size * 0.375,
-          height: size * 0.375,
+          width: size / 6,
+          height: size / 6,
           borderRadius: "50%",
           background: "var(--color-accent-soft)",
-          left: size * 0.16,
-          top: size * 0.16,
         }}
       />
       <span
         style={{
-          position: "absolute",
-          width: size * 0.29,
-          height: size * 0.29,
+          width: size * 0.233,
+          height: size * 0.233,
           borderRadius: "50%",
           background: "var(--color-surface)",
-          left: size * 0.42,
-          top: size * 0.2,
         }}
       />
       <span
         style={{
-          position: "absolute",
-          width: size * 0.21,
-          height: size * 0.21,
+          width: size / 6,
+          height: size / 6,
           borderRadius: "50%",
           background: "var(--color-accent)",
-          left: size * 0.5,
-          top: size * 0.5,
+        }}
+      />
+    </div>
+  );
+}
+
+/** go-design-system の AppSwitcher/AppIcon 用（className="size-4" 等のサイズ指定を受ける） */
+export function FluentAppIcon({ className }: { className?: string }) {
+  return (
+    <div
+      className={className}
+      style={{
+        borderRadius: "30%",
+        background: "var(--color-primary)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "8%",
+      }}
+    >
+      <span
+        style={{
+          width: "26%",
+          height: "26%",
+          borderRadius: "50%",
+          background: "var(--color-accent-soft)",
+        }}
+      />
+      <span
+        style={{
+          width: "36%",
+          height: "36%",
+          borderRadius: "50%",
+          background: "var(--color-surface)",
+        }}
+      />
+      <span
+        style={{
+          width: "26%",
+          height: "26%",
+          borderRadius: "50%",
+          background: "var(--color-accent)",
         }}
       />
     </div>

@@ -19,7 +19,8 @@ label[for="page-size"],
   --color-phrase: #0d9488;
   --color-speaking: #d97706;
   --color-shadow: #7c3aed;
-  --color-primary-chart-2: #6699ff;
+  --color-primary-chart-2: oklch(74% 0.15 55);
+  --color-primary-chart-3: #0d9488;
 
   /* Fluent palette — OKLCH（Fluentリデザイン仕様） */
   --color-background: oklch(97.5% 0.014 75);
