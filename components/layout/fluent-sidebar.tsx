@@ -73,7 +73,7 @@ function isActive(href: string, pathname: string) {
   return pathname.startsWith(href);
 }
 
-const OTHER_APPS = GO_APPS.filter((a) => a.name !== "NativeGo");
+const OTHER_APPS = GO_APPS.filter((a) => a.name !== "Fluent");
 
 export function FluentSidebar({
   currentLanguage,
