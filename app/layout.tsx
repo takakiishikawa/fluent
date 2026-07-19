@@ -85,7 +85,7 @@ export default async function RootLayout({
   --color-sidebar-accent: oklch(90% 0.05 290);
   --color-sidebar-accent-foreground: oklch(30% 0.15 290);
   --color-sidebar-foreground: var(--color-text-primary);
-  --color-sidebar-background: var(--color-surface);
+  --color-sidebar: var(--color-surface);
   --color-sidebar-border: var(--color-border-subtle);
   --color-sidebar-ring: var(--color-primary);
   --color-sidebar-primary: var(--color-primary);

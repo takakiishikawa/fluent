@@ -128,7 +128,7 @@ export default async function HomePage() {
     youtubeLogsResult,
     settingsResult,
     outputTopicsResult,
-    efSetResult,
+    inputRoundsResult,
   ] = await Promise.all([
     supabase
       .from("practice_logs")
@@ -157,11 +157,23 @@ export default async function HomePage() {
       .from("output_topics")
       .select("responses, updated_at")
       .eq("language", currentLanguage),
-    supabase
-      .from("ef_set_scores")
-      .select("tested_at")
-      .order("tested_at", { ascending: false })
-      .limit(1),
+    isVi
+      ? Promise.resolve({ count: 0 })
+      : (async () => {
+          const [g, e] = await Promise.all([
+            supabase
+              .from("grammar")
+              .select("id", { count: "exact", head: true })
+              .eq("language", "en")
+              .gte("rounds_updated_at", weekAgoISO),
+            supabase
+              .from("expressions")
+              .select("id", { count: "exact", head: true })
+              .eq("language", "en")
+              .gte("rounds_updated_at", weekAgoISO),
+          ]);
+          return { count: (g.count ?? 0) + (e.count ?? 0) };
+        })(),
   ]);
 
   type RangeLog = {
@@ -215,6 +227,7 @@ export default async function HomePage() {
   }
   const shadowingByDate = new Map<string, number>();
   const weeklyShadowingVideoIds = new Set<string>();
+  let weeklyShadowing = 0;
   for (const yt of youtubeLogsResult.data ?? []) {
     const dateStr = yt.completed_at.slice(0, 10);
     const min = parseDurToMin(
@@ -222,7 +235,10 @@ export default async function HomePage() {
         ?.duration,
     );
     shadowingByDate.set(dateStr, (shadowingByDate.get(dateStr) ?? 0) + min);
-    if (dateStr >= rangeStartStr) weeklyShadowingVideoIds.add(yt.video_id);
+    if (dateStr >= rangeStartStr) {
+      weeklyShadowingVideoIds.add(yt.video_id);
+      weeklyShadowing += min;
+    }
   }
   const weeklyShadowingVideos = weeklyShadowingVideoIds.size;
 
@@ -241,43 +257,37 @@ export default async function HomePage() {
   const dow = now.getDay(); // 0=Sun..6=Sat
   const daysUntilFriday = (5 - dow + 7) % 7 || 7;
 
-  // ── EF SET 受検時期チェック ──
-  const efSetIntervalMonths = settings?.ef_set_interval_months ?? 3;
-  const latestEfSet =
-    (efSetResult.data as { tested_at: string }[] | null)?.[0]?.tested_at ??
-    null;
-  let efSetDue = !isVi;
-  if (latestEfSet) {
-    const [ey, em, ed] = latestEfSet.split("-").map(Number);
-    const dueDate = new Date(ey, em - 1 + efSetIntervalMonths, ed);
-    efSetDue = !isVi && now >= dueDate;
-  }
+  // ── This week's plan（設定した週間目標に対する達成判定） ──
+  const baselineRepeating = settings?.baseline_repeating ?? 500;
+  const baselineShadowing = settings?.baseline_shadowing ?? 75;
+  const baselineOutput = settings?.baseline_output ?? 2;
+  const baselineInput = settings?.baseline_input ?? 1;
+  const weeklyInputRounds = inputRoundsResult.count ?? 0;
 
-  // ── This week's plan ──
   const planItems: PlanItem[] = [
     {
       href: "/repeating",
       label: "Repeating",
       detail: `${weeklyRepeating} reps this week`,
-      done: weeklyRepeating > 0,
+      done: weeklyRepeating >= baselineRepeating,
     },
     {
       href: "/shadowing",
       label: isVi ? "Shadowing" : "Ryan shadowing",
       detail: `${weeklyShadowingVideos} video${weeklyShadowingVideos === 1 ? "" : "s"} this week`,
-      done: weeklyShadowingVideos > 0,
+      done: weeklyShadowing >= baselineShadowing,
     },
     {
       href: "/output",
       label: "Output",
       detail: `${outputThisWeek} response${outputThisWeek === 1 ? "" : "s"} this week`,
-      done: outputThisWeek > 0,
+      done: outputThisWeek >= baselineOutput,
     },
     {
       href: isVi ? "/list" : "/library",
       label: isVi ? "Library" : "Input (Grammar/Phrase)",
-      detail: "Review this week's grammar & phrases",
-      done: false,
+      detail: `${weeklyInputRounds} round${weeklyInputRounds === 1 ? "" : "s"} this week`,
+      done: isVi ? true : weeklyInputRounds >= baselineInput,
     },
   ];
   const allPlanDone = planItems.every((p) => p.done);
@@ -343,16 +353,6 @@ export default async function HomePage() {
           Review →
         </span>
       </Link>
-
-      {efSetDue && (
-        <Link
-          href="/report"
-          className="mb-[22px] -mt-3 flex items-center gap-2 text-[12.5px] font-medium"
-          style={{ color: "var(--color-accent)" }}
-        >
-          EF SET の受検時期です — レポートでスコアを記録 →
-        </Link>
-      )}
 
       <div
         className="mb-[22px] rounded-[20px] pb-1 pt-2"

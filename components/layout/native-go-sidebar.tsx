@@ -15,15 +15,12 @@ import {
   SidebarMenuItem,
   SidebarRail,
   GO_APPS,
-  UserMenu,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@takaki/go-design-system";
 import {
   Settings,
-  Sun,
-  Moon,
   ExternalLink,
   Home,
   Repeat,
@@ -32,10 +29,13 @@ import {
   BookOpen,
   MessagesSquare,
   BarChart3,
+  Languages,
+  LogOut,
   type LucideIcon,
 } from "lucide-react";
 import type { Language } from "@/lib/types";
-import { LanguageSwitch } from "./language-switch";
+import { LANGUAGE_LABELS } from "@/lib/types";
+import { setCurrentLanguage } from "@/app/actions/language";
 import { FluentMark } from "@/components/brand/fluent-mark";
 
 type NavItem = {
@@ -86,10 +86,9 @@ export function NativeGoSidebar({
   const supabase = useMemo(() => createClient(), []);
 
   const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [isDark, setIsDark] = useState(false);
   const [channelName, setChannelName] = useState("");
+  const [switchingLang, setSwitchingLang] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -97,18 +96,8 @@ export function NativeGoSidebar({
       setDisplayName(
         user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
       );
-      setEmail(user.email || "");
       setAvatarUrl(user.user_metadata?.avatar_url || "");
     });
-    const update = () =>
-      setIsDark(document.documentElement.classList.contains("dark"));
-    update();
-    const obs = new MutationObserver(update);
-    obs.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-    return () => obs.disconnect();
   }, []);
 
   // Shadowing のナビラベルを固定チャンネル（講師）名に差し替える。
@@ -130,15 +119,18 @@ export function NativeGoSidebar({
       });
   }, [supabase, currentLanguage]);
 
-  function toggleTheme() {
-    const next = isDark ? "light" : "dark";
-    localStorage.setItem("theme", next);
-    document.documentElement.classList.toggle("dark", next === "dark");
-  }
-
   async function handleSignOut() {
     await supabase.auth.signOut();
     window.location.href = "/login";
+  }
+
+  const otherLanguage: Language = currentLanguage === "en" ? "vi" : "en";
+  async function handleSwitchLanguage() {
+    if (switchingLang) return;
+    setSwitchingLang(true);
+    await setCurrentLanguage(otherLanguage);
+    router.refresh();
+    setSwitchingLang(false);
   }
 
   const visiblePrimary = primaryNavItems.filter(
@@ -196,72 +188,103 @@ export function NativeGoSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <LanguageSwitch current={currentLanguage} />
-          </SidebarMenuItem>
-        </SidebarMenu>
-
+      <SidebarFooter className="p-0">
         <HoverCard openDelay={80} closeDelay={100}>
           <HoverCardTrigger asChild>
-            <div>
-              <UserMenu
-                displayName={displayName || "—"}
-                email={email}
-                avatarUrl={avatarUrl}
-                items={[
-                  {
-                    title: "設定",
-                    icon: Settings,
-                    onSelect: () => router.push("/settings"),
-                    isActive: pathname.startsWith("/settings"),
-                  },
-                  {
-                    title: isDark ? "ダーク" : "ライト",
-                    icon: isDark ? Moon : Sun,
-                    onSelect: toggleTheme,
-                  },
-                  ...OTHER_APPS.map((app) => ({
-                    title: app.name,
-                    icon: app.icon ?? ExternalLink,
-                    onSelect: () => {
-                      window.location.href = app.url;
-                    },
-                  })),
-                ]}
-                signOut={{ onSelect: handleSignOut }}
-              />
+            <div
+              className="flex cursor-default items-center gap-2.5 px-3 py-2.5"
+              style={{ borderTop: "1px solid var(--color-border-default)" }}
+            >
+              <span
+                className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+                style={{ background: "var(--color-accent-soft)", color: "var(--color-text-primary)" }}
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+                ) : (
+                  (displayName || "U").charAt(0).toUpperCase()
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13px] font-semibold text-foreground">
+                  {displayName || "—"}
+                </div>
+                <div className="truncate text-[11.5px] text-muted-foreground">
+                  English practice
+                </div>
+              </div>
             </div>
           </HoverCardTrigger>
-          {visiblePopover.length > 0 && (
-            <HoverCardContent side="top" align="start" className="w-48 p-1">
-              <div className="flex flex-col gap-0.5">
-                {visiblePopover.map(({ href, label, icon: Icon }) => {
-                  const active =
-                    (pathname === "/phrases" && href === "/phrases") ||
-                    (pathname === "/report" && href === "/report");
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      className={`flex items-center gap-3 rounded-[12px] px-3 py-2 text-[13.5px] font-medium transition-colors ${
-                        active
-                          ? "bg-[var(--color-primary-soft)] font-semibold text-[color:var(--color-primary)]"
-                          : "text-muted-foreground hover:bg-[var(--color-surface-subtle)]"
-                      }`}
-                    >
-                      <Icon
-                        className="h-4 w-4 shrink-0"
-                        style={{ color: active ? "var(--color-primary)" : "var(--color-text-secondary)" }}
-                      />
-                      {label}
-                    </Link>
-                  );
-                })}
-              </div>
-            </HoverCardContent>
-          )}
+          <HoverCardContent side="top" align="start" className="w-52 p-1">
+            <div className="flex flex-col gap-0.5">
+              <button
+                onClick={handleSwitchLanguage}
+                disabled={switchingLang}
+                className="flex items-center gap-3 rounded-[12px] px-3 py-2 text-left text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--color-surface-subtle)] disabled:opacity-50"
+              >
+                <Languages className="h-4 w-4 shrink-0" />
+                Switch to {LANGUAGE_LABELS[otherLanguage]}
+              </button>
+              {visiblePopover.map(({ href, label, icon: Icon }) => {
+                const active = pathname === href;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`flex items-center gap-3 rounded-[12px] px-3 py-2 text-[13.5px] font-medium transition-colors ${
+                      active
+                        ? "bg-[var(--color-primary-soft)] font-semibold text-[color:var(--color-primary)]"
+                        : "text-muted-foreground hover:bg-[var(--color-surface-subtle)]"
+                    }`}
+                  >
+                    <Icon
+                      className="h-4 w-4 shrink-0"
+                      style={{ color: active ? "var(--color-primary)" : "var(--color-text-secondary)" }}
+                    />
+                    {label}
+                  </Link>
+                );
+              })}
+              <Link
+                href="/settings"
+                className={`flex items-center gap-3 rounded-[12px] px-3 py-2 text-[13.5px] font-medium transition-colors ${
+                  pathname === "/settings"
+                    ? "bg-[var(--color-primary-soft)] font-semibold text-[color:var(--color-primary)]"
+                    : "text-muted-foreground hover:bg-[var(--color-surface-subtle)]"
+                }`}
+              >
+                <Settings className="h-4 w-4 shrink-0" style={{ color: "var(--color-text-secondary)" }} />
+                Settings
+              </Link>
+              {OTHER_APPS.map((app) => (
+                <button
+                  key={app.name}
+                  onClick={() => {
+                    window.location.href = app.url;
+                  }}
+                  className="flex items-center gap-3 rounded-[12px] px-3 py-2 text-left text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--color-surface-subtle)]"
+                >
+                  {app.icon ? (
+                    <app.icon className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <ExternalLink className="h-4 w-4 shrink-0" />
+                  )}
+                  {app.name}
+                </button>
+              ))}
+              <div
+                className="my-0.5"
+                style={{ height: 1, background: "var(--color-border-default)" }}
+              />
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-3 rounded-[12px] px-3 py-2 text-left text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--color-surface-subtle)]"
+              >
+                <LogOut className="h-4 w-4 shrink-0" />
+                Log out
+              </button>
+            </div>
+          </HoverCardContent>
         </HoverCard>
       </SidebarFooter>
 

@@ -43,21 +43,14 @@ label[for="page-size"],
   }
 }
 
-/* フォント設定 + サイドバートークンをTailwindテーマに登録 */
+/* フォント設定をTailwindテーマに登録
+   （sidebar-* トークンは go-design-system の theme.css が
+   hsl(var(--sidebar-xxx)) 経由で既に登録済み。app/layout.tsx の
+   inline <style> で --color-sidebar 等を直接上書きしてカスケードで勝つ） */
 @theme inline {
   --font-sans:
     var(--font-jakarta), var(--font-noto-sans), -apple-system, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
-
-  /* sidebar-* ユーティリティが参照するトークン */
-  --color-sidebar-accent: var(--color-sidebar-accent);
-  --color-sidebar-accent-foreground: var(--color-sidebar-accent-foreground);
-  --color-sidebar-foreground: var(--color-sidebar-foreground);
-  --color-sidebar-background: var(--color-sidebar-background);
-  --color-sidebar-border: var(--color-sidebar-border);
-  --color-sidebar-ring: var(--color-sidebar-ring);
-  --color-sidebar-primary: var(--color-sidebar-primary);
-  --color-sidebar-primary-foreground: var(--color-sidebar-primary-foreground);
 }
 
 /* react-day-picker dark mode */

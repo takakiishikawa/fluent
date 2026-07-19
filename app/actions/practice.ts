@@ -688,7 +688,7 @@ export async function toggleRound(
   const column = `round${round}_done`;
   const { error } = await supabase
     .from(table)
-    .update({ [column]: next })
+    .update({ [column]: next, rounds_updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
   revalidatePath("/library");

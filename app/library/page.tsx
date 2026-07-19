@@ -177,7 +177,7 @@ function InputTable({
   return (
     <div
       className="overflow-hidden rounded-[20px]"
-      style={{ border: "1px solid var(--color-border-default)" }}
+      style={{ border: "1px solid var(--color-border-default)", background: "var(--color-surface)" }}
     >
       <div
         className="grid px-[18px] py-2.5 text-[11.5px] font-bold uppercase tracking-[0.04em] text-muted-foreground"

@@ -117,7 +117,7 @@ export default function OutputPage() {
     const { error, topic } = await createOutputTopic(newTitle.trim());
     setCreating(false);
     if (error || !topic) {
-      toast.error("作成に失敗しました");
+      toast.error(error ? `作成に失敗しました: ${error}` : "作成に失敗しました");
       return;
     }
     setTopics((prev) => [topic, ...prev]);

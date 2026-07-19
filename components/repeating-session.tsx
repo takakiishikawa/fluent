@@ -64,86 +64,6 @@ const TOPIC_ICON_MAP: Record<string, LucideIcon> = {
 
 const stripSpeaker = (line: string) => line.replace(/^[AB]:\s*/i, "");
 
-// ─── Cycle ring (10回で卒業) ─────────────────────────────────────────
-function CycleRing({ done, total }: { done: number; total: number }) {
-  const size = 22;
-  const sw = 3;
-  const r = (size - sw) / 2;
-  const circ = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(1, done / total));
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="var(--color-border)"
-        strokeWidth={sw}
-      />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="var(--color-primary)"
-        strokeWidth={sw}
-        strokeLinecap="round"
-        strokeDasharray={circ}
-        strokeDashoffset={circ * (1 - pct)}
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
-      />
-    </svg>
-  );
-}
-
-// ─── Session progress — chunked dots ────────────────────────────────
-function SessionProgress({
-  current,
-  total,
-}: {
-  current: number;
-  total: number;
-}) {
-  const dots = Math.min(10, Math.max(1, total));
-  const perDot = total / dots;
-  const currentDotIdx = Math.max(
-    0,
-    Math.min(dots - 1, Math.floor((current - 1) / perDot)),
-  );
-  const intoChunk = current - 1 - currentDotIdx * perDot;
-  const partial =
-    perDot <= 1 ? 1 : Math.max(0, Math.min(1, (intoChunk + 0.5) / perDot));
-  return (
-    <span className="flex items-center gap-1">
-      {Array.from({ length: dots }).map((_, i) => {
-        const active = i === currentDotIdx;
-        const done = i < currentDotIdx;
-        const isWide = active && perDot > 1;
-        return (
-          <span
-            key={i}
-            className={cn(
-              "relative h-1.5 overflow-hidden rounded-full transition-all",
-              done ? "bg-[color:var(--color-primary)]" : "bg-border",
-            )}
-            style={{
-              width: active ? (isWide ? 36 : 26) : perDot > 1 ? 16 : 10,
-            }}
-          >
-            {active && (
-              <span
-                className="absolute inset-y-0 left-0 rounded-full bg-[color:var(--color-primary)]"
-                style={{ width: `${partial * 100}%` }}
-              />
-            )}
-          </span>
-        );
-      })}
-    </span>
-  );
-}
-
 // ─── Topic chip ─────────────────────────────────────────────────────
 function TopicChip({ label, icon }: { label: string; icon: string | null }) {
   const Icon = (icon && TOPIC_ICON_MAP[icon]) || MessageCircle;
@@ -373,7 +293,14 @@ function WordList({ notes, lines }: { notes: WordNote[]; lines: string[] }) {
   if (byLine.has(-1)) keys.push(-1);
 
   return (
-    <aside className="absolute inset-y-0 right-0 w-[268px] overflow-y-auto border-l border-border bg-background px-5 py-5">
+    <aside
+      className="w-[268px] shrink-0 overflow-y-auto rounded-[20px] px-5 py-5"
+      style={{
+        maxHeight: "calc(100vh - 200px)",
+        background: "var(--color-surface)",
+        border: "1px solid var(--color-border-default)",
+      }}
+    >
       <div className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
         <BookOpen className="h-3.5 w-3.5" />
         単語
@@ -516,61 +443,74 @@ export function RepeatingSession({
   const inlineNotes = language === "en" ? wordNotes : null;
   const sideNotes =
     language === "vi" && wordNotes && wordNotes.length > 0 ? wordNotes : null;
+  const progressPct = Math.round((sessionCurrent / sessionTotal) * 100);
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-background">
-      {/* Header strip — kind label + progress on the left */}
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-6">
-        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-          {kindLabel}リピーティング
-        </span>
-        <SessionProgress current={sessionCurrent} total={sessionTotal} />
-        <span className="text-xs tabular-nums text-muted-foreground">
-          <span className="font-bold text-foreground">{sessionCurrent}</span>
-          {" / "}
-          {sessionTotal} 件
-        </span>
-        <div className="flex-1" />
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1">
-          <CycleRing done={playCount} total={10} />
-          <span className="text-xs font-semibold tabular-nums text-foreground">
-            {playCount}
-            <span className="font-medium text-muted-foreground">/10回</span>
-          </span>
-        </span>
+    <div className="w-full max-w-[980px]">
+      {/* Header — eyebrow + progress bar on the left, end session on the right */}
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <div className="min-w-[200px] flex-1">
+          <div
+            className="mb-1.5 text-[12.5px] font-semibold uppercase tracking-[0.06em]"
+            style={{ color: "var(--color-accent)" }}
+          >
+            {kindLabel}リピーティング · {sessionCurrent}/{sessionTotal}件
+          </div>
+          <div
+            className="h-1 overflow-hidden rounded-full"
+            style={{ background: "var(--color-surface-subtle)" }}
+          >
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${progressPct}%`, background: "var(--color-primary)" }}
+            />
+          </div>
+        </div>
         <button
           type="button"
           onClick={onExit}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors"
+          style={{
+            border: "1px solid var(--color-border-default)",
+            background: "var(--color-surface)",
+            color: "var(--color-text-secondary)",
+          }}
         >
           <X className="h-3.5 w-3.5" />
           終了
         </button>
-      </header>
+      </div>
 
-      {/* Body — stage + player, with the VI word list spanning full height */}
-      <div className="relative flex min-h-0 flex-1 flex-col">
-        {/* Stage — vertically centered, compact */}
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-6 py-4">
-          {/* Pattern block — plain, no border. */}
-          <div className="max-w-[680px] text-center">
-            <h1 className="text-[28px] font-bold leading-tight tracking-tight text-foreground">
+      <div className="flex items-start gap-5">
+        {/* Drill card */}
+        <div
+          className="min-w-0 flex-1 rounded-[20px] p-9"
+          style={{ background: "var(--color-surface)", border: "1px solid var(--color-border-default)" }}
+        >
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-[24px] font-bold leading-tight tracking-tight text-foreground">
               {title}
-            </h1>
-            {summary && (
-              <p className="mx-auto mt-2.5 max-w-[600px] text-sm leading-relaxed text-muted-foreground">
-                {summary}
-              </p>
-            )}
+            </h2>
+            <span
+              className="shrink-0 rounded-full px-3 py-1 text-[12.5px] font-semibold"
+              style={{ background: "var(--color-primary-soft)", color: "var(--color-primary)" }}
+            >
+              {playCount}/10 reps
+            </span>
           </div>
-
-          {/* Topic chip — the conversation's genre */}
-          {topicLabel && (
-            <TopicChip label={topicLabel} icon={topicIcon ?? null} />
+          {summary && (
+            <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+              {summary}
+            </p>
           )}
 
-          {/* Conversation — chat bubbles (stays centered) */}
-          <div className="flex w-full max-w-[680px] flex-col gap-3">
+          {topicLabel && (
+            <div className="mb-4">
+              <TopicChip label={topicLabel} icon={topicIcon ?? null} />
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3">
             {lines.map((line, i) => (
               <Bubble
                 key={i}
@@ -584,85 +524,90 @@ export function RepeatingSession({
               />
             ))}
           </div>
-        </div>
 
-        {/* Player */}
-        <div className="flex shrink-0 justify-center px-6 pb-6 pt-2">
-          <div className="inline-flex items-center gap-3 rounded-full border border-border bg-background px-4 py-2.5 shadow-[0_8px_28px_rgba(15,23,42,0.10)]">
-            {/* Speed segmented */}
-            <div className="inline-flex rounded-full bg-muted p-0.5">
-              {SPEEDS.map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => onSpeedChange(v)}
-                  className={cn(
-                    "h-8 min-w-[46px] rounded-full px-2 text-xs font-bold tabular-nums transition-colors",
-                    speed === v
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {v.toFixed(1)}×
-                </button>
-              ))}
+          {/* Player toolbar */}
+          <div
+            className="mt-7 flex flex-wrap items-center justify-between gap-3 pt-5"
+            style={{ borderTop: "1px solid var(--color-border-default)" }}
+          >
+            <div
+              className="inline-flex items-center gap-1.5 rounded-full px-2 py-1.5"
+              style={{ background: "var(--color-surface-subtle)" }}
+            >
+              {/* Speed segmented */}
+              <div className="inline-flex items-center gap-0.5">
+                {SPEEDS.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => onSpeedChange(v)}
+                    className={cn(
+                      "h-8 min-w-[42px] rounded-full px-2 text-xs font-bold tabular-nums transition-colors",
+                      speed === v
+                        ? "bg-[var(--color-surface)] text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {v.toFixed(1)}×
+                  </button>
+                ))}
+              </div>
+
+              <span className="h-5 w-px" style={{ background: "var(--color-border-default)" }} />
+
+              <button
+                type="button"
+                onClick={onPrev}
+                disabled={prevDisabled}
+                aria-label="前へ"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={playing ? onStop : onPlay}
+                aria-label={playing ? "停止" : "再生"}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white transition-transform active:scale-95"
+                style={{ background: "var(--color-primary)" }}
+              >
+                {playing ? (
+                  <Square className="h-4 w-4 fill-current" />
+                ) : (
+                  <Play className="ml-0.5 h-4.5 w-4.5 fill-current" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={onNext}
+                disabled={nextDisabled}
+                aria-label="次へ"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+
+              <span className="h-5 w-px" style={{ background: "var(--color-border-default)" }} />
+
+              <button
+                type="button"
+                onClick={() => setShowJa((v) => !v)}
+                aria-pressed={showJa}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-colors",
+                  showJa ? "text-[color:var(--color-primary)]" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Languages className="h-3.5 w-3.5" />
+                日本語
+              </button>
             </div>
-
-            <span className="h-7 w-px bg-border" />
-
-            <button
-              type="button"
-              onClick={onPrev}
-              disabled={prevDisabled}
-              aria-label="前へ"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={playing ? onStop : onPlay}
-              aria-label={playing ? "停止" : "再生"}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--color-primary)] text-white shadow-[0_2px_8px_oklch(52%_0.19_290_/_0.25)] transition-transform active:scale-95"
-            >
-              {playing ? (
-                <Square className="h-5 w-5 fill-current" />
-              ) : (
-                <Play className="ml-0.5 h-6 w-6 fill-current" />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={onNext}
-              disabled={nextDisabled}
-              aria-label="次へ"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-
-            <span className="h-7 w-px bg-border" />
-
-            <button
-              type="button"
-              onClick={() => setShowJa((v) => !v)}
-              aria-pressed={showJa}
-              className={cn(
-                "inline-flex h-10 items-center gap-1.5 rounded-full border px-4 text-xs font-bold transition-colors",
-                showJa
-                  ? "border-[color:var(--color-primary)] bg-[var(--color-primary)]/8 text-[color:var(--color-primary)]"
-                  : "border-border text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Languages className="h-4 w-4" />
-              日本語
-            </button>
           </div>
         </div>
 
-        {/* VI: word list — full-height panel on the right, left border only */}
+        {/* VI: word list — beside the card, scrolls independently */}
         {sideNotes && <WordList notes={sideNotes} lines={lines} />}
       </div>
     </div>

@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@takaki/go-design-system";
-import { Plus, ExternalLink, Check, Trash2 } from "lucide-react";
+import { Plus, ListVideo, ExternalLink, Check, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@takaki/go-design-system";
 import { useCurrentLanguage } from "@/lib/language-context";
@@ -35,6 +35,10 @@ export default function ShadowingPage() {
   const [videoUrl, setVideoUrl] = useState("");
   const [fetchingVideo, setFetchingVideo] = useState(false);
   const [videoFetchError, setVideoFetchError] = useState("");
+  const [showAddPlaylistModal, setShowAddPlaylistModal] = useState(false);
+  const [playlistUrl, setPlaylistUrl] = useState("");
+  const [fetchingPlaylist, setFetchingPlaylist] = useState(false);
+  const [playlistFetchError, setPlaylistFetchError] = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -171,6 +175,35 @@ export default function ShadowingPage() {
     }
   };
 
+  const handleFetchPlaylist = async () => {
+    if (!playlistUrl.trim()) return;
+    setFetchingPlaylist(true);
+    setPlaylistFetchError("");
+
+    try {
+      const res = await fetch("/api/youtube-playlist-fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlistUrl: playlistUrl.trim(), language }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPlaylistFetchError(data.error ?? "取得に失敗しました");
+        return;
+      }
+
+      toast.success(`「${data.channelName}」の動画${data.videoCount}本を追加しました`);
+      setShowAddPlaylistModal(false);
+      setPlaylistUrl("");
+      await loadData();
+    } catch {
+      setPlaylistFetchError("ネットワークエラーが発生しました");
+    } finally {
+      setFetchingPlaylist(false);
+    }
+  };
+
   const doneCount = videos.filter((v) => v.lapCount >= round).length;
 
   return (
@@ -182,14 +215,24 @@ export default function ShadowingPage() {
         >
           Shadowing
         </div>
-        <Button
-          onClick={() => setShowAddVideoModal(true)}
-          size="sm"
-          variant="outline"
-        >
-          <Plus className="h-4 w-4 mr-1.5" />
-          動画を追加
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setShowAddPlaylistModal(true)}
+            size="sm"
+            variant="outline"
+          >
+            <ListVideo className="h-4 w-4 mr-1.5" />
+            プレイリストを追加
+          </Button>
+          <Button
+            onClick={() => setShowAddVideoModal(true)}
+            size="sm"
+            variant="outline"
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            動画を追加
+          </Button>
+        </div>
       </div>
       <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
         {language === "en" ? "Ryan Suzuki" : channel?.channel_name || "シャドーイング"}
@@ -236,9 +279,6 @@ export default function ShadowingPage() {
               <VideoRow
                 key={video.id}
                 position={i + 1}
-                channelName={
-                  language === "en" ? "Ryan Suzuki" : channel?.channel_name || ""
-                }
                 video={video}
                 round={round}
                 onMarkDone={handleMarkDone}
@@ -294,20 +334,63 @@ export default function ShadowingPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add playlist modal */}
+      <Dialog
+        open={showAddPlaylistModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowAddPlaylistModal(false);
+            setPlaylistUrl("");
+            setPlaylistFetchError("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>プレイリストを追加</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">プレイリストURL</label>
+              <Input
+                value={playlistUrl}
+                onChange={(e) => setPlaylistUrl(e.target.value)}
+                placeholder="https://www.youtube.com/playlist?list=..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleFetchPlaylist();
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                プレイリスト内の動画をまとめて追加します。プレイリストに含まれない動画は「動画を追加」から個別に追加してください。
+              </p>
+            </div>
+            {playlistFetchError && (
+              <p className="text-sm text-destructive">{playlistFetchError}</p>
+            )}
+            <FormActions>
+              <Button
+                onClick={handleFetchPlaylist}
+                disabled={fetchingPlaylist || !playlistUrl.trim()}
+              >
+                {fetchingPlaylist ? "取得中..." : "プレイリストを追加する"}
+              </Button>
+            </FormActions>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 function VideoRow({
   position,
-  channelName,
   video,
   round,
   onMarkDone,
   onDelete,
 }: {
   position: number;
-  channelName: string;
   video: VideoWithLap;
   round: Round;
   onMarkDone: (id: string, currentLap: number) => Promise<void>;
@@ -367,13 +450,12 @@ function VideoRow({
       <div className="min-w-0 flex-1">
         <p
           className={cn(
-            "text-[13.5px] font-semibold leading-snug",
+            "text-[13.5px] font-medium leading-snug",
             isDoneThisRound ? "text-muted-foreground" : "text-foreground",
           )}
         >
           {video.title}
         </p>
-        <p className="mt-1 text-[12px] text-muted-foreground">{channelName}</p>
       </div>
       <button
         onClick={handleComplete}

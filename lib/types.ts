@@ -164,6 +164,8 @@ export interface UserSettings {
   baseline_speaking: number;
   baseline_nativecamp: number;
   baseline_shadowing: number;
+  baseline_output: number;
+  baseline_input: number;
   speaking_test_day: number;
   current_language: Language;
   created_at: string;

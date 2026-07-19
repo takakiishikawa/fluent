@@ -32,7 +32,10 @@ export async function createOutputTopic(
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[createOutputTopic] failed:", error.message);
+    return { error: error.message };
+  }
   revalidatePath("/output");
   revalidatePath("/");
   return { topic: data as OutputTopic };

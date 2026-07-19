@@ -14,6 +14,8 @@ import { toast } from "@takaki/go-design-system";
 const DEFAULTS = {
   baseline_repeating: 500,
   baseline_shadowing: 75,
+  baseline_output: 2,
+  baseline_input: 1,
   ef_set_interval_months: 3,
 };
 
@@ -41,6 +43,8 @@ export default function SettingsRoute() {
             data.baseline_repeating ?? DEFAULTS.baseline_repeating,
           baseline_shadowing:
             data.baseline_shadowing ?? DEFAULTS.baseline_shadowing,
+          baseline_output: data.baseline_output ?? DEFAULTS.baseline_output,
+          baseline_input: data.baseline_input ?? DEFAULTS.baseline_input,
           ef_set_interval_months:
             data.ef_set_interval_months ?? DEFAULTS.ef_set_interval_months,
         });
@@ -116,6 +120,14 @@ export default function SettingsRoute() {
         <SettingsItem
           label="シャドーイング"
           control={<NumberInput fieldKey="baseline_shadowing" unit="分/週" />}
+        />
+        <SettingsItem
+          label="Output"
+          control={<NumberInput fieldKey="baseline_output" unit="件/週" />}
+        />
+        <SettingsItem
+          label="Input"
+          control={<NumberInput fieldKey="baseline_input" unit="ラウンド/週" />}
         />
       </SettingsGroup>
 
