@@ -219,7 +219,7 @@ export default async function HomePage() {
       .select("id")
       .eq("language", currentLanguage)
       .eq("archived", false)
-      .order("created_at")
+      .order("created_at", { ascending: false })
       .limit(1),
     supabase
       .from("ef_set_scores")

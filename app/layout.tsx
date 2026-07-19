@@ -51,9 +51,73 @@ export default async function RootLayout({
           primaryColor="oklch(52% 0.19 290)"
           primaryColorHover="oklch(45% 0.19 290)"
         />
+        {/*
+          DesignTokens は tokens.css のデフォルト値を <style> で注入するため、
+          app/globals.css 内の :root 上書きは DOM順で負けて無効化される。
+          ここで DesignTokens の後に注入することで確実に上書きする。
+        */}
         <style
           dangerouslySetInnerHTML={{
-            __html: `:root{--sidebar-accent:290 45% 90%;--sidebar-accent-foreground:290 60% 28%}.dark{--sidebar-accent:218 55% 16%;--sidebar-accent-foreground:218 65% 82%}`,
+            __html: `
+:root{
+  --sidebar-accent:290 45% 90%;--sidebar-accent-foreground:290 60% 28%;
+  --color-background: oklch(97.5% 0.014 75);
+  --color-surface: oklch(99% 0.006 75);
+  --color-surface-subtle: oklch(95.5% 0.016 75);
+  --color-surface-elevated: oklch(99% 0.006 75);
+  --color-text-primary: oklch(24% 0.03 280);
+  --color-text-secondary: oklch(52% 0.02 75);
+  --color-text-subtle: oklch(60% 0.02 75);
+  --color-border-subtle: oklch(92.5% 0.012 75);
+  --color-border-default: oklch(90% 0.012 75);
+  --color-border-strong: oklch(80% 0.02 75);
+  --color-accent: oklch(74% 0.15 55);
+  --color-accent-soft: oklch(92% 0.05 55);
+  --color-primary-soft: oklch(90% 0.05 290);
+  --shadow-md: 0 2px 10px oklch(50% 0.05 290 / 0.08);
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+  --color-heatmap-0: oklch(93% 0.01 75);
+  --color-heatmap-1: oklch(85% 0.08 55);
+  --color-heatmap-2: oklch(75% 0.13 55);
+  --color-heatmap-3: oklch(62% 0.17 290);
+  --color-heatmap-4: oklch(48% 0.2 290);
+  --color-sidebar-accent: oklch(90% 0.05 290);
+  --color-sidebar-accent-foreground: oklch(30% 0.15 290);
+  --color-sidebar-foreground: var(--color-text-primary);
+  --color-sidebar-background: var(--color-surface);
+  --color-sidebar-border: var(--color-border-subtle);
+  --color-sidebar-ring: var(--color-primary);
+  --color-sidebar-primary: var(--color-primary);
+  --color-sidebar-primary-foreground: var(--color-primary-text);
+  --color-grammar: #5b6af0;
+  --color-phrase: #0d9488;
+  --color-speaking: #d97706;
+  --color-shadow: #7c3aed;
+  --color-primary-chart-2: oklch(74% 0.15 55);
+  --color-primary-chart-3: #0d9488;
+}
+.dark{
+  --sidebar-accent:218 55% 16%;--sidebar-accent-foreground:218 65% 82%;
+  --color-background: oklch(20% 0.02 280);
+  --color-surface: oklch(25% 0.02 280);
+  --color-surface-subtle: oklch(29% 0.02 280);
+  --color-surface-elevated: oklch(27% 0.02 280);
+  --color-text-primary: oklch(94% 0.01 280);
+  --color-text-secondary: oklch(75% 0.02 280);
+  --color-border-subtle: oklch(32% 0.02 280);
+  --color-border-default: oklch(36% 0.02 280);
+  --color-border-strong: oklch(45% 0.02 280);
+  --color-primary-soft: oklch(32% 0.08 290);
+  --color-accent-soft: oklch(32% 0.06 55);
+  --color-heatmap-0: oklch(28% 0.015 280);
+  --color-heatmap-1: oklch(38% 0.08 55);
+  --color-heatmap-2: oklch(48% 0.13 55);
+  --color-heatmap-3: oklch(55% 0.17 290);
+  --color-heatmap-4: oklch(70% 0.18 290);
+  --color-sidebar-accent: oklch(32% 0.08 290);
+  --color-sidebar-accent-foreground: oklch(80% 0.08 290);
+}`,
           }}
         />
       </head>

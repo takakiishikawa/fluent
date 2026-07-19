@@ -38,7 +38,7 @@ export function RepeatingCompleteModal({
           className="relative overflow-hidden rounded-2xl border border-[color:var(--color-border-subtle)] bg-[color:var(--color-surface-elevated)] shadow-xl"
           style={{
             boxShadow:
-              "0 20px 50px -20px rgba(0, 82, 204, 0.25), 0 8px 24px -12px rgba(0, 0, 0, 0.18)",
+              "0 20px 50px -20px oklch(52% 0.19 290 / 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.18)",
           }}
         >
           {/* Top decorative gradient band */}

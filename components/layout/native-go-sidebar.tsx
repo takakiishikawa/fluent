@@ -105,7 +105,7 @@ export function NativeGoSidebar({
       .select("channel_name")
       .eq("language", currentLanguage)
       .eq("archived", false)
-      .order("created_at")
+      .order("created_at", { ascending: false })
       .limit(1)
       .then(({ data }) => {
         setChannelName(data?.[0]?.channel_name ?? "");

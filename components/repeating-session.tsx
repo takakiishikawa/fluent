@@ -624,7 +624,7 @@ export function RepeatingSession({
               type="button"
               onClick={playing ? onStop : onPlay}
               aria-label={playing ? "停止" : "再生"}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--color-primary)] text-white shadow-[0_2px_8px_rgba(0,82,204,0.18)] transition-transform active:scale-95"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--color-primary)] text-white shadow-[0_2px_8px_oklch(52%_0.19_290_/_0.25)] transition-transform active:scale-95"
             >
               {playing ? (
                 <Square className="h-5 w-5 fill-current" />

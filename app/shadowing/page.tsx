@@ -51,7 +51,7 @@ export default function ShadowingPage() {
       .select("*")
       .eq("language", language)
       .eq("archived", false)
-      .order("created_at");
+      .order("created_at", { ascending: false });
 
     // 固定の1チャンネルのみ表示。VI は「お気に入り」を優先。
     const fixed =
