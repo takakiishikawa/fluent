@@ -13,7 +13,7 @@ label[for="page-size"],
   display: none !important;
 }
 
-/* NativeGo 固有セマンティックカラー（チャート等） */
+/* Fluent（旧NativeGo）固有セマンティックカラー（チャート等） */
 :root {
   --color-grammar: #5b6af0;
   --color-phrase: #0d9488;
@@ -21,9 +21,36 @@ label[for="page-size"],
   --color-shadow: #7c3aed;
   --color-primary-chart-2: #6699ff;
 
+  /* Fluent palette — OKLCH（Fluentリデザイン仕様） */
+  --color-background: oklch(97.5% 0.014 75);
+  --color-surface: oklch(99% 0.006 75);
+  --color-surface-subtle: oklch(95.5% 0.016 75);
+  --color-surface-elevated: oklch(99% 0.006 75);
+  --color-text-primary: oklch(24% 0.03 280);
+  --color-text-secondary: oklch(52% 0.02 75);
+  --color-text-subtle: oklch(60% 0.02 75);
+  --color-border-subtle: oklch(92.5% 0.012 75);
+  --color-border-default: oklch(90% 0.012 75);
+  --color-border-strong: oklch(80% 0.02 75);
+  --color-accent: oklch(74% 0.15 55);
+  --color-accent-soft: oklch(92% 0.05 55);
+  --color-primary-soft: oklch(90% 0.05 290);
+  --shadow-md: 0 2px 10px oklch(50% 0.05 290 / 0.08);
+
+  /* Radius — card系は20px、button/input/chipは12pxへ (Fluentリデザイン) */
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+
+  /* 12週ヒートマップ 5段階スケール */
+  --color-heatmap-0: oklch(93% 0.01 75);
+  --color-heatmap-1: oklch(85% 0.08 55);
+  --color-heatmap-2: oklch(75% 0.13 55);
+  --color-heatmap-3: oklch(62% 0.17 290);
+  --color-heatmap-4: oklch(48% 0.2 290);
+
   /* Sidebar accent: primary-tinted background for hover/active/current-page */
-  --color-sidebar-accent: #deebff;
-  --color-sidebar-accent-foreground: #0052cc;
+  --color-sidebar-accent: oklch(90% 0.05 290);
+  --color-sidebar-accent-foreground: oklch(30% 0.15 290);
   --color-sidebar-foreground: var(--color-text-primary);
   --color-sidebar-background: var(--color-surface);
   --color-sidebar-border: var(--color-border-subtle);
@@ -33,6 +60,24 @@ label[for="page-size"],
 }
 
 .dark {
+  --color-background: oklch(20% 0.02 280);
+  --color-surface: oklch(25% 0.02 280);
+  --color-surface-subtle: oklch(29% 0.02 280);
+  --color-surface-elevated: oklch(27% 0.02 280);
+  --color-text-primary: oklch(94% 0.01 280);
+  --color-text-secondary: oklch(75% 0.02 280);
+  --color-border-subtle: oklch(32% 0.02 280);
+  --color-border-default: oklch(36% 0.02 280);
+  --color-border-strong: oklch(45% 0.02 280);
+  --color-primary-soft: oklch(32% 0.08 290);
+  --color-accent-soft: oklch(32% 0.06 55);
+
+  --color-heatmap-0: oklch(28% 0.015 280);
+  --color-heatmap-1: oklch(38% 0.08 55);
+  --color-heatmap-2: oklch(48% 0.13 55);
+  --color-heatmap-3: oklch(55% 0.17 290);
+  --color-heatmap-4: oklch(70% 0.18 290);
+
   --color-sidebar-accent: #1b2e52;
   --color-sidebar-accent-foreground: #85b8ff;
 }
@@ -66,7 +111,7 @@ label[for="page-size"],
 /* フォント設定 + サイドバートークンをTailwindテーマに登録 */
 @theme inline {
   --font-sans:
-    var(--font-inter), var(--font-noto-sans), -apple-system, sans-serif;
+    var(--font-jakarta), var(--font-noto-sans), -apple-system, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   /* sidebar-* ユーティリティが参照するトークン */

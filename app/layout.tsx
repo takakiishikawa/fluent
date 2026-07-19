@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Noto_Sans_JP } from "next/font/google";
+import { Plus_Jakarta_Sans, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { DesignTokens, Toaster } from "@takaki/go-design-system";
 import { NativeGoShell } from "@/components/layout/native-go-shell";
@@ -10,10 +10,10 @@ import { LoginToast } from "@/components/login-toast";
 import { Suspense } from "react";
 import { Analytics } from "@vercel/analytics/next";
 
-const inter = Inter({
-  variable: "--font-inter",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -24,7 +24,7 @@ const notoSans = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: "NativeGo",
+  title: "Fluent",
   description: "英会話レッスン学習管理アプリ",
 };
 
@@ -42,15 +42,18 @@ export default async function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${inter.variable} ${notoSans.variable} h-full antialiased`}
+      className={`${jakarta.variable} ${notoSans.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
         <DarkModeInit />
-        <DesignTokens primaryColor="#0052CC" primaryColorHover="#0747A6" />
+        <DesignTokens
+          primaryColor="oklch(52% 0.19 290)"
+          primaryColorHover="oklch(45% 0.19 290)"
+        />
         <style
           dangerouslySetInnerHTML={{
-            __html: `:root{--sidebar-accent:214 100% 95%;--sidebar-accent-foreground:218 96% 28%}.dark{--sidebar-accent:218 55% 16%;--sidebar-accent-foreground:218 65% 82%}`,
+            __html: `:root{--sidebar-accent:290 45% 90%;--sidebar-accent-foreground:290 60% 28%}.dark{--sidebar-accent:218 55% 16%;--sidebar-accent-foreground:218 65% 82%}`,
           }}
         />
       </head>

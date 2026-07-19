@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { LoginPage } from "@takaki/go-design-system";
-import { Languages } from "lucide-react";
+import { FluentMark } from "@/components/brand/fluent-mark";
 
 function LoginContent() {
   const supabase = createClient();
@@ -20,13 +20,8 @@ function LoginContent() {
 
   return (
     <LoginPage
-      productName="NativeGo"
-      productLogo={
-        <Languages
-          size={24}
-          style={{ color: "var(--color-primary)" }}
-        />
-      }
+      productName="Fluent"
+      productLogo={<FluentMark size={28} />}
       tagline="英会話レッスン 学習管理アプリ"
       onGoogleSignIn={handleGoogleSignIn}
     />

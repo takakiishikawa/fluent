@@ -16,21 +16,15 @@ import {
   TabsTrigger,
   Badge,
 } from "@takaki/go-design-system";
-import {
-  Plus,
-  ExternalLink,
-  CheckCircle,
-  Archive,
-  ArchiveRestore,
-  Trash2,
-} from "lucide-react";
+import { Plus, ExternalLink, CheckCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@takaki/go-design-system";
 import { useCurrentLanguage } from "@/lib/language-context";
 import type { YoutubeChannel, YoutubeVideo } from "@/lib/types";
 
 type VideoWithLap = YoutubeVideo & { lapCount: number };
-type Filter = "todo" | "done";
+const ROUNDS = [1, 2, 3] as const;
+type Round = (typeof ROUNDS)[number];
 
 const STANDALONE_CHANNEL_URL = "nativego:standalone-videos";
 
@@ -38,22 +32,11 @@ export default function ShadowingPage() {
   const supabase = createClient();
   const language = useCurrentLanguage();
 
-  const [channels, setChannels] = useState<YoutubeChannel[]>([]);
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
-    null,
-  );
-  const [videosByChannel, setVideosByChannel] = useState<
-    Record<string, VideoWithLap[]>
-  >({});
-  const [filter, setFilter] = useState<Filter>("todo");
+  const [channel, setChannel] = useState<YoutubeChannel | null>(null);
+  const [videos, setVideos] = useState<VideoWithLap[]>([]);
+  const [round, setRound] = useState<Round>(1);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showAddVideoModal, setShowAddVideoModal] = useState(false);
-  const [showArchiveModal, setShowArchiveModal] = useState(false);
-  const [channelUrl, setChannelUrl] = useState("");
-  const [sinceYear, setSinceYear] = useState("");
-  const [fetching, setFetching] = useState(false);
-  const [fetchError, setFetchError] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [fetchingVideo, setFetchingVideo] = useState(false);
   const [videoFetchError, setVideoFetchError] = useState("");
@@ -68,52 +51,53 @@ export default function ShadowingPage() {
       return;
     }
 
-    const [channelsResult, videosResult, logsResult] = await Promise.all([
-      supabase
-        .from("youtube_channels")
-        .select("*")
-        .eq("language", language)
-        .order("created_at"),
+    const { data: channels } = await supabase
+      .from("youtube_channels")
+      .select("*")
+      .eq("language", language)
+      .eq("archived", false)
+      .order("created_at");
+
+    // 固定の1チャンネルのみ表示。VI は「お気に入り」を優先。
+    const fixed =
+      (language === "vi"
+        ? channels?.find((c) => c.channel_url === STANDALONE_CHANNEL_URL)
+        : null) ??
+      channels?.[0] ??
+      null;
+
+    setChannel(fixed);
+
+    if (!fixed) {
+      setVideos([]);
+      setLoading(false);
+      return;
+    }
+
+    const [videosResult, logsResult] = await Promise.all([
       supabase
         .from("youtube_videos")
         .select("*")
-        .eq("language", language)
+        .eq("channel_id", fixed.id)
         .order("sort_order"),
-      supabase.from("youtube_logs").select("video_id").eq("language", language),
+      supabase
+        .from("youtube_logs")
+        .select("video_id")
+        .eq("language", language),
     ]);
 
-    const chList = channelsResult.data ?? [];
-    const videos = videosResult.data ?? [];
     const logs = logsResult.data ?? [];
-
     const lapCounts = new Map<string, number>();
     for (const log of logs) {
       lapCounts.set(log.video_id, (lapCounts.get(log.video_id) ?? 0) + 1);
     }
 
-    const byChannel: Record<string, VideoWithLap[]> = {};
-    for (const v of videos) {
-      if (!byChannel[v.channel_id]) byChannel[v.channel_id] = [];
-      byChannel[v.channel_id].push({
+    setVideos(
+      (videosResult.data ?? []).map((v) => ({
         ...v,
         lapCount: lapCounts.get(v.id) ?? 0,
-      });
-    }
-
-    setChannels(chList);
-    setVideosByChannel(byChannel);
-    setSelectedChannelId((prev) => {
-      if (prev) return prev;
-      const activeChannels = chList.filter((c) => !c.archived);
-      // VI ではお気に入り（個別動画）タブをデフォルトで開く
-      if (language === "vi") {
-        const standalone = activeChannels.find(
-          (c) => c.channel_url === STANDALONE_CHANNEL_URL,
-        );
-        if (standalone) return standalone.id;
-      }
-      return activeChannels[0]?.id ?? null;
-    });
+      })),
+    );
     setLoading(false);
   }, [supabase, language]);
 
@@ -121,18 +105,13 @@ export default function ShadowingPage() {
     loadData();
   }, [loadData]);
 
-  const handleMarkDone = async (videoId: string): Promise<void> => {
+  const handleMarkDone = async (videoId: string, currentLap: number) => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { count } = await supabase
-      .from("youtube_logs")
-      .select("*", { count: "exact", head: true })
-      .eq("video_id", videoId);
-
-    const nextLap = (count ?? 0) + 1;
+    const nextLap = currentLap + 1;
 
     const { error } = await supabase.from("youtube_logs").insert({
       user_id: user.id,
@@ -146,17 +125,10 @@ export default function ShadowingPage() {
       return;
     }
 
-    toast.success(`${nextLap}周目を完了しました`);
-
-    setVideosByChannel((prev) => {
-      const updated: Record<string, VideoWithLap[]> = {};
-      for (const cId in prev) {
-        updated[cId] = prev[cId].map((v) =>
-          v.id === videoId ? { ...v, lapCount: v.lapCount + 1 } : v,
-        );
-      }
-      return updated;
-    });
+    toast.success(`Round ${nextLap} 完了！`);
+    setVideos((prev) =>
+      prev.map((v) => (v.id === videoId ? { ...v, lapCount: nextLap } : v)),
+    );
   };
 
   const handleDeleteVideo = async (videoId: string): Promise<void> => {
@@ -172,34 +144,7 @@ export default function ShadowingPage() {
     }
 
     toast.success("動画を削除しました");
-    setVideosByChannel((prev) => {
-      const updated: Record<string, VideoWithLap[]> = {};
-      for (const cId in prev) {
-        updated[cId] = prev[cId].filter((v) => v.id !== videoId);
-      }
-      return updated;
-    });
-  };
-
-  const handleArchiveChannel = async (channelId: string, archive: boolean) => {
-    const { error } = await supabase
-      .from("youtube_channels")
-      .update({ archived: archive })
-      .eq("id", channelId);
-
-    if (error) {
-      toast.error("操作に失敗しました");
-      return;
-    }
-
-    toast.success(archive ? "アーカイブしました" : "アーカイブを解除しました");
-    setChannels((prev) =>
-      prev.map((c) => (c.id === channelId ? { ...c, archived: archive } : c)),
-    );
-    if (archive && selectedChannelId === channelId) {
-      const next = channels.find((c) => !c.archived && c.id !== channelId);
-      setSelectedChannelId(next?.id ?? null);
-    }
+    setVideos((prev) => prev.filter((v) => v.id !== videoId));
   };
 
   const handleFetchVideo = async () => {
@@ -231,254 +176,63 @@ export default function ShadowingPage() {
     }
   };
 
-  const handleFetchChannel = async () => {
-    if (!channelUrl.trim()) return;
-    setFetching(true);
-    setFetchError("");
-
-    try {
-      const body: Record<string, string | number> = {
-        channelUrl: channelUrl.trim(),
-        language,
-      };
-      const yr = parseInt(sinceYear);
-      if (!isNaN(yr) && yr > 1990) body.sinceYear = yr;
-
-      const res = await fetch("/api/youtube-fetch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setFetchError(data.error ?? "取得に失敗しました");
-        return;
-      }
-
-      const msg =
-        data.shortsSkipped > 0
-          ? `「${data.channelName}」の動画${data.videoCount}本を保存しました（ショート${data.shortsSkipped}本を除外）`
-          : `「${data.channelName}」の動画${data.videoCount}本を保存しました`;
-      toast.success(msg);
-      setShowAddModal(false);
-      setChannelUrl("");
-      setSinceYear("");
-      await loadData();
-    } catch {
-      setFetchError("ネットワークエラーが発生しました");
-    } finally {
-      setFetching(false);
-    }
-  };
-
-  // 「お気に入り」（個別動画）チャンネルは左端に固定。それ以外は created_at 順
-  const activeChannels = channels
-    .filter((c) => !c.archived)
-    .sort((a, b) => {
-      const aSA = a.channel_url === STANDALONE_CHANNEL_URL ? -1 : 1;
-      const bSA = b.channel_url === STANDALONE_CHANNEL_URL ? -1 : 1;
-      return aSA - bSA;
-    });
-  const archivedChannels = channels.filter((c) => c.archived);
-
-  const selectedChannel = channels.find((c) => c.id === selectedChannelId);
-  const isStandaloneSelected =
-    selectedChannel?.channel_url === STANDALONE_CHANNEL_URL;
-
-  const allVideos = selectedChannelId
-    ? (videosByChannel[selectedChannelId] ?? [])
-    : [];
-  const todoCnt = allVideos.filter((v) => v.lapCount === 0).length;
-  const doneCnt = allVideos.filter((v) => v.lapCount > 0).length;
-
-  // お気に入りチャンネルでは これから/見た の振り分けをせず全動画を表示
-  const filteredVideos = isStandaloneSelected
-    ? allVideos
-    : allVideos.filter((v) =>
-        filter === "todo" ? v.lapCount === 0 : v.lapCount > 0,
-      );
+  const doneCount = videos.filter((v) => v.lapCount >= round).length;
 
   return (
     <div className="space-y-6 max-w-5xl">
       <PageHeader
-        title="シャドーイング"
+        title={channel?.channel_name || "シャドーイング"}
         actions={
-          <div className="flex items-center gap-2">
-            {archivedChannels.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowArchiveModal(true)}
-              >
-                <Archive className="h-4 w-4 mr-1.5" />
-                アーカイブ済み
-              </Button>
-            )}
-            <Button
-              onClick={() => setShowAddVideoModal(true)}
-              size="sm"
-              variant="outline"
-            >
-              <Plus className="h-4 w-4 mr-1.5" />
-              動画を追加
-            </Button>
-            <Button onClick={() => setShowAddModal(true)} size="sm">
-              <Plus className="h-4 w-4 mr-1.5" />
-              チャンネルを追加
-            </Button>
-          </div>
+          <Button
+            onClick={() => setShowAddVideoModal(true)}
+            size="sm"
+            variant="outline"
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            動画を追加
+          </Button>
         }
       />
 
       {loading ? (
         <div className="text-muted-foreground text-sm">読み込み中...</div>
-      ) : activeChannels.length === 0 && archivedChannels.length === 0 ? (
+      ) : !channel || videos.length === 0 ? (
         <div className="text-center py-20 text-muted-foreground">
-          <p className="font-medium">チャンネルが登録されていません</p>
+          <p className="font-medium">動画が登録されていません</p>
           <p className="text-sm mt-1">
-            「チャンネルを追加」からYouTubeチャンネルを登録してください
+            「動画を追加」からYouTube動画を登録してください
           </p>
         </div>
       ) : (
         <>
-          {/* Active channel tabs */}
-          {activeChannels.length > 0 && (
-            <div className="flex gap-2 flex-wrap items-center">
-              {activeChannels.map((ch) => {
-                const isStandalone = ch.channel_url === STANDALONE_CHANNEL_URL;
-                return (
-                  <div key={ch.id} className="group relative flex items-center">
-                    <Button
-                      onClick={() => setSelectedChannelId(ch.id)}
-                      variant={
-                        selectedChannelId === ch.id ? "default" : "secondary"
-                      }
-                      size="sm"
-                      className={cn(
-                        isStandalone ? "px-4" : "pl-4 pr-8",
-                        "rounded-full",
-                      )}
-                    >
-                      {ch.channel_name}
-                    </Button>
-                    {!isStandalone && (
-                      <Button
-                        onClick={() => handleArchiveChannel(ch.id, true)}
-                        title="アーカイブ"
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                          "absolute right-2 p-0.5 rounded transition-opacity",
-                          selectedChannelId === ch.id
-                            ? "opacity-60 hover:opacity-100 text-primary-foreground"
-                            : "opacity-0 group-hover:opacity-60 hover:!opacity-100 text-muted-foreground",
-                        )}
-                      >
-                        <Archive className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <div className="flex items-center justify-between">
+            <Tabs value={String(round)} onValueChange={(v) => setRound(Number(v) as Round)}>
+              <TabsList>
+                {ROUNDS.map((r) => (
+                  <TabsTrigger key={r} value={String(r)}>
+                    Round {r}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            <Badge variant="secondary" className="rounded-full tabular-nums">
+              {doneCount}/{videos.length} completed
+            </Badge>
+          </div>
 
-          {/* Content for selected channel */}
-          {selectedChannelId && (
-            <>
-              {/* Archive notice */}
-              {selectedChannel?.archived && (
-                <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2.5 text-xs text-muted-foreground">
-                  <Archive className="h-3.5 w-3.5 shrink-0" />
-                  このチャンネルはアーカイブ済みです
-                </div>
-              )}
-
-              {/* Filter tabs（お気に入りはリピート前提なのでタブ非表示） */}
-              {!isStandaloneSelected && (
-                <Tabs
-                  value={filter}
-                  onValueChange={(v) => setFilter(v as Filter)}
-                >
-                  <TabsList>
-                    <TabsTrigger value="todo">
-                      これから
-                      <Badge variant="secondary" className="ml-2 rounded-full">
-                        {todoCnt}
-                      </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="done">
-                      見た
-                      <Badge variant="secondary" className="ml-2 rounded-full">
-                        {doneCnt}
-                      </Badge>
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              )}
-
-              {/* Video grid */}
-              {filteredVideos.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground text-sm">
-                  {isStandaloneSelected
-                    ? "お気に入りはまだありません"
-                    : filter === "todo"
-                      ? "全部見ました！"
-                      : "まだ見た動画がありません"}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredVideos.map((video) => (
-                    <VideoCard
-                      key={video.id}
-                      video={video}
-                      onMarkDone={handleMarkDone}
-                      onDelete={handleDeleteVideo}
-                      replayable={isStandaloneSelected}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </>
-      )}
-
-      {/* Archive modal */}
-      <Dialog open={showArchiveModal} onOpenChange={setShowArchiveModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>アーカイブ済みチャンネル</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            {archivedChannels.map((ch) => (
-              <div
-                key={ch.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-[var(--color-border-default)] px-4 py-3"
-              >
-                <span className="text-sm font-medium">{ch.channel_name}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleArchiveChannel(ch.id, false)}
-                >
-                  <ArchiveRestore className="h-3.5 w-3.5 mr-1.5" />
-                  戻す
-                </Button>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {videos.map((video) => (
+              <VideoCard
+                key={video.id}
+                video={video}
+                round={round}
+                onMarkDone={handleMarkDone}
+                onDelete={handleDeleteVideo}
+              />
             ))}
           </div>
-          <FormActions>
-            <Button
-              variant="outline"
-              onClick={() => setShowArchiveModal(false)}
-            >
-              閉じる
-            </Button>
-          </FormActions>
-        </DialogContent>
-      </Dialog>
+        </>
+      )}
 
       {/* Add single video modal */}
       <Dialog
@@ -509,8 +263,6 @@ export default function ShadowingPage() {
               <p className="text-xs text-muted-foreground">
                 例: https://www.youtube.com/watch?v=xxxxxxxxxxx /
                 https://youtu.be/xxxxxxxxxxx
-                <br />
-                チャンネル丸ごとではなく、特定の1本だけ登録できます。「お気に入り」タブに表示されます。
               </p>
             </div>
             {videoFetchError && (
@@ -527,89 +279,31 @@ export default function ShadowingPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Add channel modal */}
-      <Dialog
-        open={showAddModal}
-        onOpenChange={(open) => {
-          if (!open) {
-            setShowAddModal(false);
-            setChannelUrl("");
-            setSinceYear("");
-            setFetchError("");
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>チャンネルを追加</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">チャンネルURL</label>
-              <Input
-                value={channelUrl}
-                onChange={(e) => setChannelUrl(e.target.value)}
-                placeholder="https://www.youtube.com/@ChannelName"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleFetchChannel();
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                例: https://www.youtube.com/@EnglishWithVenya
-                <br />※ 3分未満の動画は自動的に除外されます
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">取得開始年（任意）</label>
-              <Input
-                value={sinceYear}
-                onChange={(e) => setSinceYear(e.target.value)}
-                placeholder="例: 2020"
-                maxLength={4}
-              />
-              <p className="text-xs text-muted-foreground">
-                入力した年以降の動画のみ取得します
-              </p>
-            </div>
-            {fetchError && (
-              <p className="text-sm text-destructive">{fetchError}</p>
-            )}
-            <FormActions>
-              <Button
-                onClick={handleFetchChannel}
-                disabled={fetching || !channelUrl.trim()}
-              >
-                {fetching ? "取得中..." : "動画を取得する"}
-              </Button>
-            </FormActions>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
 function VideoCard({
   video,
+  round,
   onMarkDone,
   onDelete,
-  replayable = false,
 }: {
   video: VideoWithLap;
-  onMarkDone: (id: string) => Promise<void>;
+  round: Round;
+  onMarkDone: (id: string, currentLap: number) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  replayable?: boolean;
 }) {
   const [marking, setMarking] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const isCompleted = video.lapCount > 0;
+  const isDoneThisRound = video.lapCount >= round;
+  const canMark = video.lapCount === round - 1;
 
   const handleComplete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setMarking(true);
-    await onMarkDone(video.id);
+    await onMarkDone(video.id, video.lapCount);
     setMarking(false);
   };
 
@@ -627,11 +321,10 @@ function VideoCard({
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "group relative rounded-lg border border-[var(--color-border-default)] bg-card overflow-hidden flex flex-col transition-all cursor-pointer border border-border",
-        "hover:border-[var(--color-border-strong)] hover:border border-border hover:-translate-y-0.5",
+        "group relative rounded-[20px] border border-[var(--color-border-default)] bg-card overflow-hidden flex flex-col transition-all cursor-pointer",
+        "hover:border-[var(--color-border-strong)] hover:-translate-y-0.5",
       )}
     >
-      {/* Thumbnail */}
       <div className="aspect-video bg-muted relative overflow-hidden">
         {video.thumbnail_url ? (
           <img
@@ -644,20 +337,14 @@ function VideoCard({
             <ExternalLink className="h-8 w-8 text-muted-foreground/30" />
           </div>
         )}
-        {/* Completed overlay（リピート前提のお気に入りでは常にホバーで再生アイコン） */}
-        {isCompleted && !replayable ? (
+        {isDoneThisRound && (
           <div
             className="absolute inset-0 flex items-center justify-center"
             style={{ background: "var(--color-overlay-default)" }}
           >
             <CheckCircle className="h-6 w-6 text-white drop-shadow" />
           </div>
-        ) : (
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
-            <ExternalLink className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 drop-shadow" />
-          </div>
         )}
-        {/* Delete button */}
         <Button
           onClick={handleDelete}
           disabled={deleting}
@@ -670,12 +357,11 @@ function VideoCard({
         </Button>
       </div>
 
-      {/* Title + duration */}
       <div className="px-3 pt-3 pb-10">
         <p
           className={cn(
             "text-sm font-medium line-clamp-2 leading-snug transition-colors",
-            isCompleted && !replayable
+            isDoneThisRound
               ? "text-muted-foreground"
               : "group-hover:text-primary",
           )}
@@ -686,7 +372,7 @@ function VideoCard({
           <p
             className={cn(
               "text-xs mt-1",
-              isCompleted && !replayable
+              isDoneThisRound
                 ? "text-muted-foreground/60"
                 : "text-muted-foreground",
             )}
@@ -696,39 +382,20 @@ function VideoCard({
         )}
       </div>
 
-      {/* Action button - bottom right */}
       <div className="absolute bottom-2.5 right-2.5">
-        {replayable ? (
-          <Button
-            size="sm"
-            onClick={handleComplete}
-            disabled={marking}
-            className="cursor-pointer"
-          >
-            {marking
-              ? "記録中..."
-              : video.lapCount > 0
-                ? `見た (${video.lapCount})`
-                : "見た"}
-          </Button>
-        ) : isCompleted ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleComplete}
-            disabled={marking}
-            className="cursor-pointer"
-          >
-            {marking ? "記録中..." : `もう1回 (${video.lapCount + 1}回目)`}
+        {isDoneThisRound ? (
+          <Button variant="outline" size="sm" disabled className="cursor-default">
+            ✓ Done
           </Button>
         ) : (
           <Button
             size="sm"
             onClick={handleComplete}
-            disabled={marking}
+            disabled={marking || !canMark}
+            title={!canMark ? "前のRoundを先に完了してください" : undefined}
             className="cursor-pointer"
           >
-            {marking ? "記録中..." : "見た"}
+            {marking ? "記録中..." : "Mark done"}
           </Button>
         )}
       </div>

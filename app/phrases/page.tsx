@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { cn, EmptyState } from "@takaki/go-design-system";
+import { cn, EmptyState, PageHeader } from "@takaki/go-design-system";
+import { PhraseTab } from "@/app/list/page";
 import {
   Coffee,
   ShoppingBag,
@@ -132,6 +133,17 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function EnPhraseCatalog() {
+  const [reloadKey, setReloadKey] = useState(0);
+  const bumpReload = useCallback(() => setReloadKey((k) => k + 1), []);
+  return (
+    <div className="space-y-6">
+      <PageHeader title="フレーズカタログ" />
+      <PhraseTab reloadKey={reloadKey} bumpReload={bumpReload} />
+    </div>
+  );
+}
+
 export default function PhrasesPage() {
   const supabase = useMemo(() => createClient(), []);
   const language = useCurrentLanguage();
@@ -226,12 +238,7 @@ export default function PhrasesPage() {
   }, [items, active]);
 
   if (!isVi) {
-    return (
-      <EmptyState
-        title="ベトナム語専用の機能です"
-        description="言語をベトナム語に切り替えると、場面別のフレーズ・単語が表示されます。"
-      />
-    );
+    return <EnPhraseCatalog />;
   }
 
   if (loading) {

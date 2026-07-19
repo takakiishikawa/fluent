@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import {
   Sidebar,
@@ -19,28 +18,24 @@ import {
   AppSwitcher,
   GO_APPS,
   UserMenu,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
 } from "@takaki/go-design-system";
 import {
   Home,
   Repeat2,
   Volume2,
   MessagesSquare,
-  FileText,
   BookOpen,
+  PenLine,
   BarChart3,
   Settings,
-  Lightbulb,
   Sun,
   Moon,
-  UserCog,
 } from "lucide-react";
 import type { Language } from "@/lib/types";
 import { LanguageSwitch } from "./language-switch";
-
-const ProfileDialog = dynamic(
-  () => import("./profile-dialog").then((m) => ({ default: m.ProfileDialog })),
-  { ssr: false },
-);
 
 type NavItem = {
   href: string;
@@ -50,22 +45,34 @@ type NavItem = {
   languages?: Language[];
 };
 
-const navItems: NavItem[] = [
+/** プライマリナビ（常時表示） */
+const primaryNavItems: NavItem[] = [
   { href: "/", label: "ダッシュボード", icon: Home },
   { href: "/repeating", label: "リピーティング", icon: Repeat2 },
   { href: "/shadowing", label: "シャドーイング", icon: Volume2 },
+  { href: "/output", label: "アウトプット", icon: PenLine },
+  { href: "/grammar", label: "文法", icon: BookOpen, languages: ["en"] },
   {
     href: "/phrases",
     label: "フレーズ",
     icon: MessagesSquare,
     languages: ["vi"],
   },
-  { href: "/texts", label: "ライブラリ", icon: FileText, languages: ["en"] },
   {
     href: "/list",
     label: "ライブラリ",
     icon: BookOpen,
     languages: ["vi"],
+  },
+];
+
+/** プロフィール行ホバーで出すポップオーバー内ナビ */
+const popoverNavItems: NavItem[] = [
+  {
+    href: "/phrases",
+    label: "フレーズカタログ",
+    icon: MessagesSquare,
+    languages: ["en"],
   },
   { href: "/report", label: "レポート", icon: BarChart3 },
 ];
@@ -73,13 +80,8 @@ const navItems: NavItem[] = [
 function isActive(href: string, pathname: string) {
   if (href === "/") return pathname === "/";
   if (href === "/repeating") return pathname.startsWith("/repeating");
-  if (href === "/texts")
-    return (
-      pathname === "/texts" ||
-      pathname === "/lessons" ||
-      pathname === "/add" ||
-      pathname === "/list"
-    );
+  if (href === "/grammar")
+    return pathname === "/grammar" || pathname === "/texts";
   if (href === "/list") return pathname === "/list";
   return pathname.startsWith(href);
 }
@@ -96,8 +98,8 @@ export function NativeGoSidebar({
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [profileOpen, setProfileOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [channelName, setChannelName] = useState("");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -119,6 +121,20 @@ export function NativeGoSidebar({
     return () => obs.disconnect();
   }, []);
 
+  // Shadowing のナビラベルを固定チャンネル（講師）名に差し替える
+  useEffect(() => {
+    supabase
+      .from("youtube_channels")
+      .select("channel_name")
+      .eq("language", currentLanguage)
+      .eq("archived", false)
+      .order("created_at")
+      .limit(1)
+      .then(({ data }) => {
+        setChannelName(data?.[0]?.channel_name ?? "");
+      });
+  }, [supabase, currentLanguage]);
+
   function toggleTheme() {
     const next = isDark ? "light" : "dark";
     localStorage.setItem("theme", next);
@@ -130,95 +146,93 @@ export function NativeGoSidebar({
     window.location.href = "/login";
   }
 
+  const visiblePrimary = primaryNavItems.filter(
+    ({ languages }) => !languages || languages.includes(currentLanguage),
+  );
+  const visiblePopover = popoverNavItems.filter(
+    ({ languages }) => !languages || languages.includes(currentLanguage),
+  );
+
   return (
-    <>
-      <Sidebar>
-        <SidebarHeader>
-          <AppSwitcher
-            currentApp="NativeGo"
-            apps={GO_APPS}
-            placement="bottom"
-          />
-        </SidebarHeader>
+    <Sidebar>
+      <SidebarHeader>
+        <AppSwitcher currentApp="NativeGo" apps={GO_APPS} placement="bottom" />
+      </SidebarHeader>
 
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {navItems
-                  .filter(
-                    ({ languages }) =>
-                      !languages || languages.includes(currentLanguage),
-                  )
-                  .map(({ href, label, icon: Icon }) => (
-                    <SidebarMenuItem key={href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive(href, pathname)}
-                      >
-                        <Link href={href}>
-                          <Icon className="h-4 w-4 shrink-0" />
-                          {label}
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {visiblePrimary.map(({ href, label, icon: Icon }) => (
+                <SidebarMenuItem key={href}>
+                  <SidebarMenuButton asChild isActive={isActive(href, pathname)}>
+                    <Link href={href}>
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {href === "/shadowing" && channelName ? channelName : label}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
 
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <LanguageSwitch current={currentLanguage} />
-            </SidebarMenuItem>
-          </SidebarMenu>
-          <UserMenu
-            displayName={displayName || "—"}
-            email={email}
-            avatarUrl={avatarUrl}
-            items={[
-              {
-                title: "プロフィール編集",
-                icon: UserCog,
-                onSelect: () => setProfileOpen(true),
-              },
-              {
-                title: "コンセプト",
-                icon: Lightbulb,
-                onSelect: () => router.push("/concept"),
-                isActive: pathname.startsWith("/concept"),
-              },
-              {
-                title: "設定",
-                icon: Settings,
-                onSelect: () => router.push("/settings"),
-                isActive: pathname.startsWith("/settings"),
-              },
-              {
-                title: isDark ? "ダーク" : "ライト",
-                icon: isDark ? Moon : Sun,
-                onSelect: toggleTheme,
-              },
-            ]}
-            signOut={{ onSelect: handleSignOut }}
-          />
-        </SidebarFooter>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <LanguageSwitch current={currentLanguage} />
+          </SidebarMenuItem>
+        </SidebarMenu>
 
-        <SidebarRail />
-      </Sidebar>
+        <HoverCard openDelay={80} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            <div>
+              <UserMenu
+                displayName={displayName || "—"}
+                email={email}
+                avatarUrl={avatarUrl}
+                items={[
+                  {
+                    title: "設定",
+                    icon: Settings,
+                    onSelect: () => router.push("/settings"),
+                    isActive: pathname.startsWith("/settings"),
+                  },
+                  {
+                    title: isDark ? "ダーク" : "ライト",
+                    icon: isDark ? Moon : Sun,
+                    onSelect: toggleTheme,
+                  },
+                ]}
+                signOut={{ onSelect: handleSignOut }}
+              />
+            </div>
+          </HoverCardTrigger>
+          {visiblePopover.length > 0 && (
+            <HoverCardContent
+              side="top"
+              align="start"
+              className="w-48 p-1.5"
+            >
+              <div className="flex flex-col">
+                {visiblePopover.map(({ href, label, icon: Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-foreground hover:bg-[var(--color-sidebar-accent)] transition-colors"
+                  >
+                    <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            </HoverCardContent>
+          )}
+        </HoverCard>
+      </SidebarFooter>
 
-      <ProfileDialog
-        open={profileOpen}
-        onClose={() => setProfileOpen(false)}
-        displayName={displayName}
-        avatarUrl={avatarUrl}
-        onSaved={(newName, newAvatarUrl) => {
-          setDisplayName(newName);
-          setAvatarUrl(newAvatarUrl);
-        }}
-      />
-    </>
+      <SidebarRail />
+    </Sidebar>
   );
 }

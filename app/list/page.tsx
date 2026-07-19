@@ -111,7 +111,7 @@ function PlayCount({ count, max = 10 }: { count: number; max?: number }) {
 
 // ── GrammarTab ────────────────────────────────────────────────────────────────
 
-function GrammarTab({
+export function GrammarTab({
   reloadKey,
   bumpReload,
   onCountChange,
@@ -305,7 +305,7 @@ function GrammarTab({
 
 // ── PhraseTab ─────────────────────────────────────────────────────────────────
 
-function PhraseTab({
+export function PhraseTab({
   reloadKey,
   bumpReload,
   onCountChange,

@@ -101,6 +101,16 @@ export interface PracticeLog {
   speaking_count: number;
 }
 
+export interface OutputTopic {
+  id: string;
+  user_id: string;
+  language: Language;
+  title: string;
+  response: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface NativeCampLog {
   id: string;
   user_id: string;

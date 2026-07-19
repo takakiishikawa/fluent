@@ -14,14 +14,14 @@ import {
  * GitHub のように hover で日付と回数を tooltip 表示する。
  */
 
-// 0 = 練習なし、1-5 = 練習量（青系グラデーション）
+// 0 = 練習なし、1-5 = 練習量（Fluent ヒートマップトークン 5段階）
 const HEAT = [
-  "bg-[#eef1f6] dark:bg-[#1b2130]",
-  "bg-[#d2e2f5] dark:bg-[#1f3a5c]",
-  "bg-[#a7c6ec] dark:bg-[#2b568c]",
-  "bg-[#6f9fdd] dark:bg-[#4279bd]",
-  "bg-[#356dc6] dark:bg-[#6ba3e6]",
-  "bg-[#0a3f86] dark:bg-[#9cc6f7]",
+  "var(--color-heatmap-0)",
+  "var(--color-heatmap-1)",
+  "var(--color-heatmap-2)",
+  "var(--color-heatmap-3)",
+  "var(--color-heatmap-4)",
+  "var(--color-heatmap-4)",
 ];
 
 export type HeatmapCell = {
@@ -62,7 +62,7 @@ export function ActivityHeatmap({
   longest: number;
 }) {
   return (
-    <div className="rounded-xl border border-[var(--color-border-default)] bg-card p-4">
+    <div className="rounded-[20px] border border-[var(--color-border-default)] bg-card p-4">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-foreground">
           12週間のアクティビティ
@@ -99,10 +99,12 @@ export function ActivityHeatmap({
               <Tooltip key={i}>
                 <TooltipTrigger asChild>
                   <div
-                    className={`${
-                      lv < 0 ? `${HEAT[0]} opacity-40` : HEAT[lv]
-                    } cursor-default ring-foreground/30 transition-shadow hover:ring-2`}
-                    style={{ borderRadius: "3px" }}
+                    className="cursor-default ring-foreground/30 transition-shadow hover:ring-2"
+                    style={{
+                      borderRadius: "3px",
+                      background: HEAT[lv < 0 ? 0 : lv],
+                      opacity: lv < 0 ? 0.4 : 1,
+                    }}
                   />
                 </TooltipTrigger>
                 <TooltipContent
