@@ -68,11 +68,11 @@ type PlanItem = {
   done: boolean;
 };
 
-function PlanRow({ item }: { item: PlanItem }) {
+function PlanCard({ item }: { item: PlanItem }) {
   return (
     <div
-      className="flex items-center gap-3.5 px-3 py-3"
-      style={{ borderTop: "1px solid var(--color-border-default)" }}
+      className="flex items-center gap-3 rounded-[14px] px-3.5 py-3"
+      style={{ border: "1px solid var(--color-border-default)" }}
     >
       <span
         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
@@ -88,7 +88,7 @@ function PlanRow({ item }: { item: PlanItem }) {
         <div className="text-[14.5px] font-semibold text-foreground">
           {item.label}
         </div>
-        <div className="mt-0.5 text-[12.5px] text-muted-foreground">
+        <div className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
           {item.detail}
         </div>
       </div>
@@ -273,7 +273,7 @@ export default async function HomePage() {
     },
     {
       href: "/shadowing",
-      label: isVi ? "Shadowing" : "Ryan shadowing",
+      label: isVi ? "Shadowing" : "Ryan",
       detail: `${weeklyShadowingVideos} video${weeklyShadowingVideos === 1 ? "" : "s"} · ${weeklyShadowing} / ${baselineShadowing} min this week`,
       done: weeklyShadowing >= baselineShadowing,
     },
@@ -285,7 +285,7 @@ export default async function HomePage() {
     },
     {
       href: isVi ? "/list" : "/library",
-      label: isVi ? "Library" : "Input (Grammar/Phrase)",
+      label: isVi ? "Library" : "Input",
       detail: isVi
         ? `${weeklyInputRounds} round${weeklyInputRounds === 1 ? "" : "s"} this week`
         : `${weeklyInputRounds} / ${baselineInput} round${baselineInput === 1 ? "" : "s"} this week`,
@@ -357,13 +357,13 @@ export default async function HomePage() {
       </Link>
 
       <div
-        className="mb-[22px] rounded-[20px] pb-1 pt-2"
+        className="mb-[22px] rounded-[20px] p-3"
         style={{
           background: "var(--color-surface)",
           border: "1px solid var(--color-border-default)",
         }}
       >
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-1 pt-2">
+        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 px-0.5">
           <div className="text-[14px] font-bold text-foreground">
             This week&apos;s plan
           </div>
@@ -377,9 +377,11 @@ export default async function HomePage() {
             </div>
           )}
         </div>
-        {planItems.map((item) => (
-          <PlanRow key={item.href} item={item} />
-        ))}
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          {planItems.map((item) => (
+            <PlanCard key={item.href} item={item} />
+          ))}
+        </div>
       </div>
 
       <ActivityHeatmap

@@ -30,12 +30,14 @@ import {
   BarChart3,
   Languages,
   LogOut,
+  UserPen,
   type LucideIcon,
 } from "lucide-react";
 import type { Language } from "@/lib/types";
 import { LANGUAGE_LABELS } from "@/lib/types";
 import { setCurrentLanguage } from "@/app/actions/language";
 import { FluentMark } from "@/components/brand/fluent-mark";
+import { ProfileDialog } from "@/components/layout/profile-dialog";
 
 type NavItem = {
   href: string;
@@ -88,6 +90,7 @@ export function FluentSidebar({
   const [avatarUrl, setAvatarUrl] = useState("");
   const [channelName, setChannelName] = useState("");
   const [switchingLang, setSwitchingLang] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -140,7 +143,7 @@ export function FluentSidebar({
   );
 
   return (
-    <Sidebar collapsible="none">
+    <Sidebar collapsible="none" className="sticky top-0 h-svh">
       <SidebarHeader className="px-1.5 py-0">
         <div className="flex items-center gap-2.5 px-1.5 py-2">
           <FluentMark size={30} />
@@ -217,6 +220,13 @@ export function FluentSidebar({
           <HoverCardContent side="top" align="start" className="w-52 p-1">
             <div className="flex flex-col gap-0.5">
               <button
+                onClick={() => setProfileOpen(true)}
+                className="flex items-center gap-3 rounded-[12px] px-3 py-2 text-left text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--color-surface-subtle)]"
+              >
+                <UserPen className="h-4 w-4 shrink-0" />
+                Edit profile
+              </button>
+              <button
                 onClick={handleSwitchLanguage}
                 disabled={switchingLang}
                 className="flex items-center gap-3 rounded-[12px] px-3 py-2 text-left text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[var(--color-surface-subtle)] disabled:opacity-50"
@@ -286,6 +296,17 @@ export function FluentSidebar({
           </HoverCardContent>
         </HoverCard>
       </SidebarFooter>
+
+      <ProfileDialog
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        onSaved={(newName, newUrl) => {
+          setDisplayName(newName);
+          setAvatarUrl(newUrl);
+        }}
+      />
     </Sidebar>
   );
 }

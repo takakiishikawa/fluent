@@ -78,7 +78,7 @@ export function ProfileDialog({
       onSaved(editName.trim() || displayName, finalUrl);
       onClose();
     } catch (err: unknown) {
-      setUploadError(err instanceof Error ? err.message : "保存に失敗しました");
+      setUploadError(err instanceof Error ? err.message : "Failed to save");
     }
     setSaving(false);
   }
@@ -94,7 +94,7 @@ export function ProfileDialog({
     >
       <DialogContent className="max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>プロフィール編集</DialogTitle>
+          <DialogTitle>Edit profile</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex items-center gap-4">
@@ -127,16 +127,16 @@ export function ProfileDialog({
                 onClick={() => fileInputRef.current?.click()}
                 className="h-auto p-0 text-xs text-primary hover:underline"
               >
-                画像を変更
+                Change photo
               </Button>
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">表示名</label>
+            <label className="text-sm font-medium">Display name</label>
             <Input
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              placeholder="表示名を入力"
+              placeholder="Enter a display name"
             />
           </div>
           {uploadError && (
@@ -144,7 +144,7 @@ export function ProfileDialog({
           )}
           <div className="flex justify-end">
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "保存中..." : "保存"}
+              {saving ? "Saving..." : "Save"}
             </Button>
           </div>
         </div>

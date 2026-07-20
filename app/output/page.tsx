@@ -143,21 +143,21 @@ export default function OutputPage() {
 
   return (
     <div className="w-full">
-      <div className="mb-1.5 flex items-center justify-between">
-        <div
-          className="text-[12.5px] font-semibold uppercase tracking-[0.06em]"
-          style={{ color: "var(--color-accent)" }}
-        >
-          Output
-        </div>
+      <div
+        className="mb-1.5 text-[12.5px] font-semibold uppercase tracking-[0.06em]"
+        style={{ color: "var(--color-accent)" }}
+      >
+        Output
+      </div>
+      <div className="mb-[22px] flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-[30px] font-bold text-foreground">
+          Speak from your own words
+        </h1>
         <Button size="sm" variant="outline" onClick={() => setShowNewModal(true)}>
           <Plus className="h-4 w-4 mr-1.5" />
           Add topic
         </Button>
       </div>
-      <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
-        Speak from your own words
-      </h1>
 
       <div
         className="grid items-start gap-[22px]"
