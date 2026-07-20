@@ -263,8 +263,10 @@ export default function OutputPage() {
           }}
         >
           {topics.map((t) => {
-            const written = (t.responses?.length ? t.responses : [t.response]).some(
-              (r) => r.trim().length > 0,
+            const versionTexts = t.responses?.length ? t.responses : [t.response];
+            const written = versionTexts.some((r) => r.trim().length > 0);
+            const needsReview = statusesFor(t).some(
+              (s, i) => s === "draft" && (versionTexts[i] ?? "").trim().length > 0,
             );
             const isActive = t.id === activeId;
             return (
@@ -282,8 +284,14 @@ export default function OutputPage() {
                 >
                   {t.title}
                 </p>
-                <div className="text-[12px] text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                  {written && <StatusDot status={needsReview ? "draft" : "revised"} />}
                   {written ? "Written" : "Not started"} · {formatDate(t.created_at)}
+                  {needsReview && (
+                    <span className="font-semibold" style={{ color: "var(--color-warning)" }}>
+                      · Needs review
+                    </span>
+                  )}
                 </div>
               </button>
             );
@@ -306,9 +314,12 @@ export default function OutputPage() {
               border: "1px solid var(--color-border-default)",
             }}
           >
-            <p className="mb-1.5 text-[12.5px] text-muted-foreground">
-              {formatDate(active.created_at)}
-            </p>
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <p className="text-[12.5px] text-muted-foreground">
+                {formatDate(active.created_at)}
+              </p>
+              <StatusToggle status={currentStatus} onChange={handleSetStatus} />
+            </div>
             <InlineEdit
               value={active.title}
               onChange={handleTitleChange}
@@ -323,13 +334,14 @@ export default function OutputPage() {
                   <button
                     key={i}
                     onClick={() => setVersionIdx(i)}
-                    className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors"
+                    className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors"
                     style={{
                       border: `1px solid ${isActive ? "var(--color-primary)" : "var(--color-border-default)"}`,
                       background: isActive ? "var(--color-primary-soft)" : "var(--color-surface)",
                       color: isActive ? "var(--color-primary)" : "var(--color-text-secondary)",
                     }}
                   >
+                    <StatusDot status={statuses[i] ?? "draft"} />
                     Version {i + 1}
                   </button>
                 );
