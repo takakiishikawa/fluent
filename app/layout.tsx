@@ -58,6 +58,9 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
 :root{
+  /* DSのbg-sidebarはhsl(var(--sidebar-background))を直接参照するため、
+     --color-sidebar(oklch)とは別にこちらも --color-surface と揃えておく必要がある */
+  --sidebar-background:34.3 77.8% 98.2%;
   --sidebar-accent:290 45% 90%;--sidebar-accent-foreground:290 60% 28%;
   --color-background: oklch(97.5% 0.014 75);
   --color-surface: oklch(99% 0.006 75);
