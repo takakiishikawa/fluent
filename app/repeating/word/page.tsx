@@ -9,7 +9,7 @@ import { useCurrentLanguage } from "@/lib/language-context";
 import type { Word } from "@/lib/types";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import { RepeatingSession } from "@/components/repeating-session";
-import { RepeatingCountPicker } from "@/components/repeating-count-picker";
+import { RepeatingPickerDialog } from "@/components/repeating-picker-dialog";
 import { RepeatingCompleteModal } from "@/components/repeating-complete-modal";
 import { RepeatingLeaveConfirm } from "@/components/repeating-leave-confirm";
 import { useRepeatingSessionGuard } from "@/lib/hooks/use-repeating-session-guard";
@@ -300,12 +300,7 @@ export default function WordRepeatingPage() {
   }
 
   if (!sessionStarted) {
-    return (
-      <RepeatingCountPicker
-        total={allItems.length}
-        onSelect={startSession}
-      />
-    );
+    return <RepeatingPickerDialog initialCategory="word" />;
   }
 
   const current = items[index];

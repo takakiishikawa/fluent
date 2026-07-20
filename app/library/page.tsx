@@ -239,7 +239,10 @@ function InputTable({
                 borderTop: "1px solid var(--color-border-default)",
                 alignItems: "start",
                 cursor: locked ? "default" : "pointer",
-                background: checked ? "var(--color-primary-soft)" : undefined,
+                background: checked
+                  ? "color-mix(in oklch, var(--color-primary-soft) 40%, var(--color-surface))"
+                  : undefined,
+                boxShadow: checked ? "inset 3px 0 0 var(--color-primary)" : undefined,
               }}
             >
               <div

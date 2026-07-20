@@ -268,25 +268,27 @@ export default async function HomePage() {
     {
       href: "/repeating",
       label: "Repeating",
-      detail: `${weeklyRepeating} reps this week`,
+      detail: `${weeklyRepeating} / ${baselineRepeating} reps this week`,
       done: weeklyRepeating >= baselineRepeating,
     },
     {
       href: "/shadowing",
       label: isVi ? "Shadowing" : "Ryan shadowing",
-      detail: `${weeklyShadowingVideos} video${weeklyShadowingVideos === 1 ? "" : "s"} this week`,
+      detail: `${weeklyShadowingVideos} video${weeklyShadowingVideos === 1 ? "" : "s"} · ${weeklyShadowing} / ${baselineShadowing} min this week`,
       done: weeklyShadowing >= baselineShadowing,
     },
     {
       href: "/output",
       label: "Output",
-      detail: `${outputThisWeek} response${outputThisWeek === 1 ? "" : "s"} this week`,
+      detail: `${outputThisWeek} / ${baselineOutput} response${baselineOutput === 1 ? "" : "s"} this week`,
       done: outputThisWeek >= baselineOutput,
     },
     {
       href: isVi ? "/list" : "/library",
       label: isVi ? "Library" : "Input (Grammar/Phrase)",
-      detail: `${weeklyInputRounds} round${weeklyInputRounds === 1 ? "" : "s"} this week`,
+      detail: isVi
+        ? `${weeklyInputRounds} round${weeklyInputRounds === 1 ? "" : "s"} this week`
+        : `${weeklyInputRounds} / ${baselineInput} round${baselineInput === 1 ? "" : "s"} this week`,
       done: isVi ? true : weeklyInputRounds >= baselineInput,
     },
   ];

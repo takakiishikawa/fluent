@@ -31,10 +31,16 @@ const CATEGORIES_EN: { value: Category; label: string }[] = [
   { value: "expression", label: "Phrases" },
 ];
 
-export function RepeatingPickerDialog({ onClose }: { onClose?: () => void }) {
+export function RepeatingPickerDialog({
+  onClose,
+  initialCategory = "grammar",
+}: {
+  onClose?: () => void;
+  initialCategory?: Category;
+}) {
   const router = useRouter();
   const language = useCurrentLanguage();
-  const [category, setCategory] = useState<Category>("grammar");
+  const [category, setCategory] = useState<Category>(initialCategory);
   const [counts, setCounts] = useState<Counts | null>(null);
 
   const categories = language === "vi" ? CATEGORIES_VI : CATEGORIES_EN;

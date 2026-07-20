@@ -71,9 +71,9 @@ export default function SettingsRoute() {
       );
 
     if (error) {
-      toast.error("保存に失敗しました");
+      toast.error("Failed to save");
     } else {
-      toast.success("保存しました");
+      toast.success("Saved");
     }
     setSaving(false);
   };
@@ -107,45 +107,45 @@ export default function SettingsRoute() {
 
   return (
     <div className="space-y-8 max-w-lg">
-      <PageHeader title="設定" />
+      <PageHeader title="Settings" />
 
       <SettingsGroup
-        title="ベースライン"
-        description="週間ベースラインとは、毎週維持したい最低限の学習量です。目標ではなく、このペースを下回らないことを意識する基準です。"
+        title="Baseline"
+        description="Your weekly baseline is the minimum amount of practice you want to maintain. It's not a target to hit, but a floor you're aiming not to fall below."
       >
         <SettingsItem
-          label="リピーティング"
-          control={<NumberInput fieldKey="baseline_repeating" unit="回/週" />}
+          label="Repeating"
+          control={<NumberInput fieldKey="baseline_repeating" unit="reps/week" />}
         />
         <SettingsItem
-          label="シャドーイング"
-          control={<NumberInput fieldKey="baseline_shadowing" unit="分/週" />}
+          label="Shadowing"
+          control={<NumberInput fieldKey="baseline_shadowing" unit="min/week" />}
         />
         <SettingsItem
           label="Output"
-          control={<NumberInput fieldKey="baseline_output" unit="件/週" />}
+          control={<NumberInput fieldKey="baseline_output" unit="entries/week" />}
         />
         <SettingsItem
           label="Input"
-          control={<NumberInput fieldKey="baseline_input" unit="ラウンド/週" />}
+          control={<NumberInput fieldKey="baseline_input" unit="rounds/week" />}
         />
       </SettingsGroup>
 
       <SettingsGroup
         title="EF SET"
-        description="EF SET を何ヶ月に1回受けるかを設定します。前回の受検から指定した期間が過ぎると、トップページに受検バナーが表示されます。"
+        description="Set how often you take the EF SET, in months. Once that many months have passed since your last attempt, a reminder banner appears on the dashboard."
       >
         <SettingsItem
-          label="受検間隔"
+          label="Interval"
           control={
-            <NumberInput fieldKey="ef_set_interval_months" unit="ヶ月に1回" />
+            <NumberInput fieldKey="ef_set_interval_months" unit="months" />
           }
         />
       </SettingsGroup>
 
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? "保存中..." : "保存する"}
+          {saving ? "Saving..." : "Save"}
         </Button>
       </div>
     </div>

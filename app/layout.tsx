@@ -5,7 +5,6 @@ import { DesignTokens, Toaster } from "@takaki/go-design-system";
 import { FluentShell } from "@/components/layout/fluent-shell";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentLanguage } from "@/lib/language";
-import { DarkModeInit } from "@/components/dark-mode-init";
 import { LoginToast } from "@/components/login-toast";
 import { Suspense } from "react";
 import { Analytics } from "@vercel/analytics/next";
@@ -46,7 +45,6 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <DarkModeInit />
         <DesignTokens
           primaryColor="oklch(52% 0.19 290)"
           primaryColorHover="oklch(45% 0.19 290)"
@@ -96,27 +94,6 @@ export default async function RootLayout({
   --color-shadow: #7c3aed;
   --color-primary-chart-2: oklch(74% 0.15 55);
   --color-primary-chart-3: #0d9488;
-}
-.dark{
-  --sidebar-accent:218 55% 16%;--sidebar-accent-foreground:218 65% 82%;
-  --color-background: oklch(20% 0.02 280);
-  --color-surface: oklch(25% 0.02 280);
-  --color-surface-subtle: oklch(29% 0.02 280);
-  --color-surface-elevated: oklch(27% 0.02 280);
-  --color-text-primary: oklch(94% 0.01 280);
-  --color-text-secondary: oklch(75% 0.02 280);
-  --color-border-subtle: oklch(32% 0.02 280);
-  --color-border-default: oklch(36% 0.02 280);
-  --color-border-strong: oklch(45% 0.02 280);
-  --color-primary-soft: oklch(32% 0.08 290);
-  --color-accent-soft: oklch(32% 0.06 55);
-  --color-heatmap-0: oklch(28% 0.015 280);
-  --color-heatmap-1: oklch(38% 0.08 55);
-  --color-heatmap-2: oklch(48% 0.13 55);
-  --color-heatmap-3: oklch(55% 0.17 290);
-  --color-heatmap-4: oklch(70% 0.18 290);
-  --color-sidebar-accent: oklch(32% 0.08 290);
-  --color-sidebar-accent-foreground: oklch(80% 0.08 290);
 }`,
           }}
         />
