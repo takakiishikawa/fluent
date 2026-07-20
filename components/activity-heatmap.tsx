@@ -110,7 +110,7 @@ export function ActivityHeatmap({
                 </TooltipTrigger>
                 <TooltipContent
                   side="top"
-                  className="bg-[#1f1d1a] text-[12px] text-white dark:bg-[#2a2833] dark:text-[#f0eef4]"
+                  className="bg-[#1f1d1a] text-[12px] text-white"
                 >
                   {label}
                 </TooltipContent>

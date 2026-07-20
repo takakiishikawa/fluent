@@ -3,9 +3,6 @@
 @import "@takaki/go-design-system/theme.css";
 @import "react-day-picker/src/style.css";
 
-/* class-based dark mode: responds to .dark on <html> */
-@variant dark (&:where(.dark, .dark *));
-
 /* DataTable: 表示件数セレクタを全アプリで非表示にする
    （pageSize は各 DataTable に直接渡す） */
 label[for="page-size"],
@@ -23,11 +20,7 @@ label[for="page-size"],
 [data-sidebar="sidebar"] {
   background-color: oklch(96% 0.014 75) !important;
 }
-.dark [data-sidebar="sidebar"] {
-  background-color: oklch(23% 0.02 280) !important;
-}
 
-/* ベースカラー — ダークモードで見出しが消えないよう本文色を継承させる */
 @layer base {
   body {
     color: var(--foreground);
@@ -63,26 +56,6 @@ label[for="page-size"],
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
-/* react-day-picker dark mode */
-.dark .rdp-root {
-  --rdp-accent-color: #7b8af5;
-  --rdp-accent-background-color: rgba(123, 138, 245, 0.15);
-  color: var(--color-text-primary);
-}
-.dark .rdp-day_button:hover {
-  background-color: var(--color-surface-subtle);
-}
-.dark .rdp-month_caption,
-.dark .rdp-nav {
-  color: var(--color-text-primary);
-}
-.dark .rdp-nav button {
-  color: var(--color-text-secondary);
-}
-.dark .rdp-nav button:hover {
-  background-color: var(--color-surface-subtle);
-  color: var(--color-text-primary);
-}
 .rdp-root {
   --rdp-day-height: 36px;
   --rdp-day-width: 36px;
