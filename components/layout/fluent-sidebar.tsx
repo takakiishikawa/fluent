@@ -54,8 +54,8 @@ const primaryNavItems: NavItem[] = [
   { href: "/repeating", label: "Repeating", icon: Repeat },
   { href: "/shadowing", label: "Shadowing", icon: Headphones },
   { href: "/output", label: "Output", icon: PenLine },
-  { href: "/songs", label: "Songs", icon: Music, languages: ["en"] },
   { href: "/library", label: "Input", icon: BookOpen, languages: ["en"] },
+  { href: "/songs", label: "Songs", icon: Music, languages: ["en"] },
   { href: "/phrases", label: "Phrases", icon: MessagesSquare, languages: ["vi"] },
   { href: "/list", label: "Library", icon: BookOpen, languages: ["vi"] },
 ];

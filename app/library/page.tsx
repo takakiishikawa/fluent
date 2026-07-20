@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Textarea, Button, Switch, toast } from "@takaki/go-design-system";
-import { Lock, Check, MessageSquarePlus, Sparkles } from "lucide-react";
+import { Input, Switch, toast } from "@takaki/go-design-system";
+import { Lock, Check, Sparkles } from "lucide-react";
 import { toggleRound, masterItem, setItemNote } from "@/app/actions/practice";
 import { useCurrentLanguage } from "@/lib/language-context";
 
@@ -61,72 +61,52 @@ function useLibraryItems(kind: Kind, reloadKey: number) {
   return { items, setItems, loading };
 }
 
-function NoteRow({
+function ExampleInput({
   kind,
-  id,
-  note,
-  onChanged,
+  row,
+  registerRef,
+  onSubmit,
 }: {
   kind: Kind;
-  id: string;
-  note: string | null;
-  onChanged: (next: string | null) => void;
+  row: Row;
+  registerRef: (id: string, el: HTMLInputElement | null) => void;
+  onSubmit: (row: Row, text: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(note ?? "");
+  const [value, setValue] = useState(row.note ?? "");
   const [saving, setSaving] = useState(false);
 
   async function commit() {
+    const trimmed = value.trim();
+    if (!trimmed || saving) return;
     setSaving(true);
     try {
-      await setItemNote(kind, id, draft);
-      onChanged(draft.trim() || null);
-      setOpen(false);
+      await setItemNote(kind, row.id, trimmed);
+      onSubmit(row, trimmed);
+      setValue("");
     } catch {
-      toast.error("Failed to save note");
+      toast.error("Failed to save example");
     } finally {
       setSaving(false);
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setDraft(note ?? "");
-          setOpen(true);
-        }}
-        className="mt-1.5 flex items-start gap-1.5 text-left text-[12px]"
-        style={{ color: note ? "var(--color-primary)" : "var(--color-text-secondary)" }}
-      >
-        <MessageSquarePlus className="mt-[1px] h-3 w-3 shrink-0" />
-        <span className="text-left">
-          {note ? (note.length > 60 ? note.slice(0, 60) + "…" : note) : "Add note"}
-        </span>
-      </button>
-    );
-  }
-
   return (
-    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-      <Textarea
-        autoFocus
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        rows={3}
-        className="text-[13px]"
-        style={{ background: "var(--color-background)" }}
-      />
-      <div className="mt-1.5 flex gap-2">
-        <Button size="sm" onClick={commit} disabled={saving}>
-          {saving ? "Saving..." : "Save"}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
-          Cancel
-        </Button>
-      </div>
-    </div>
+    <Input
+      ref={(el) => registerRef(row.id, el)}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commit();
+        }
+      }}
+      onClick={(e) => e.stopPropagation()}
+      disabled={saving}
+      placeholder="Write your own example sentence…"
+      className="text-[13px]"
+      style={{ background: "var(--color-background)" }}
+    />
   );
 }
 
@@ -148,6 +128,23 @@ function InputTable({
   reload: () => void;
 }) {
   const roundIdx = round - 1;
+  const inputRefs = useRef(new Map<string, HTMLInputElement>());
+  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null);
+
+  const visible = showCompleted
+    ? items
+    : items.filter((it) => !it.rounds[roundIdx]);
+
+  useEffect(() => {
+    if (!pendingFocusId) return;
+    const el = inputRefs.current.get(pendingFocusId);
+    if (el) {
+      el.focus();
+      setPendingFocusId(null);
+    } else if (!visible.some((it) => it.id === pendingFocusId)) {
+      setPendingFocusId(null);
+    }
+  }, [pendingFocusId, visible]);
 
   async function handleToggleRound(row: Row) {
     if (roundIdx > 0 && !row.rounds.slice(0, roundIdx).every(Boolean)) return;
@@ -167,6 +164,21 @@ function InputTable({
     }
   }
 
+  function handleExampleSubmit(row: Row, text: string) {
+    const index = visible.findIndex((it) => it.id === row.id);
+    const next = index >= 0 ? visible[index + 1] : undefined;
+    setPendingFocusId(next ? next.id : null);
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.id !== row.id) return it;
+        const rounds = [...it.rounds] as [boolean, boolean, boolean];
+        rounds[roundIdx] = true;
+        return { ...it, note: text, rounds };
+      }),
+    );
+    toggleRound(kind, row.id, round, true).catch(() => reload());
+  }
+
   async function handleMaster(row: Row) {
     setItems((prev) =>
       prev.map((it) => {
@@ -182,10 +194,6 @@ function InputTable({
       reload();
     }
   }
-
-  const visible = showCompleted
-    ? items
-    : items.filter((it) => !it.rounds[roundIdx]);
 
   if (loading) {
     return (
@@ -206,6 +214,7 @@ function InputTable({
       >
         <div className="w-[28px] shrink-0">No.</div>
         <div className="flex-1">{kind === "grammar" ? "Grammar point" : "Phrase"}</div>
+        <div className="w-[280px] shrink-0">Write your own example</div>
       </div>
       {visible.length === 0 ? (
         <div className="px-[18px] py-10 text-center text-sm text-muted-foreground">
@@ -250,16 +259,18 @@ function InputTable({
                 <div className="text-[12.5px] leading-snug text-muted-foreground">
                   {row.jp}
                 </div>
+              </div>
+
+              <div className="w-[280px] shrink-0" style={{ opacity: locked ? 0.35 : 1 }}>
                 {!locked && (
-                  <NoteRow
+                  <ExampleInput
                     kind={kind}
-                    id={row.id}
-                    note={row.note}
-                    onChanged={(next) =>
-                      setItems((prev) =>
-                        prev.map((it) => (it.id === row.id ? { ...it, note: next } : it)),
-                      )
-                    }
+                    row={row}
+                    registerRef={(id, el) => {
+                      if (el) inputRefs.current.set(id, el);
+                      else inputRefs.current.delete(id);
+                    }}
+                    onSubmit={handleExampleSubmit}
                   />
                 )}
               </div>
