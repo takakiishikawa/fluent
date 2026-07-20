@@ -146,7 +146,7 @@ export function RepeatingPickerDialog({
         <div className="flex flex-col gap-2">
           {countOptions.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              練習できる項目がありません
+              Nothing left to practice
             </p>
           ) : (
             countOptions.map((o) => (
