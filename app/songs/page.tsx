@@ -11,6 +11,11 @@ import {
   DialogTitle,
   DialogFooter,
   EmptyState,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   toast,
 } from "@takaki/go-design-system";
 import { Plus, Music, Rewind, FastForward, Play, Pause, Trash2 } from "lucide-react";
@@ -147,10 +152,27 @@ export default function SongsPage() {
         <h1 className="text-[30px] font-bold text-foreground">
           Turn songs you love into practice
         </h1>
-        <Button size="sm" variant="outline" onClick={() => setShowNewModal(true)}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          Add song
-        </Button>
+        <div className="flex items-center gap-2">
+          {songs.length > 0 && (
+            <Select value={activeId ?? undefined} onValueChange={setActiveId}>
+              <SelectTrigger className="w-[240px]">
+                <SelectValue placeholder="Choose a song" />
+              </SelectTrigger>
+              <SelectContent>
+                {songs.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.title}
+                    {s.artist ? ` — ${s.artist}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button size="sm" variant="outline" onClick={() => setShowNewModal(true)}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            Add song
+          </Button>
+        </div>
       </div>
 
       {!active ? (
@@ -162,43 +184,10 @@ export default function SongsPage() {
         />
       ) : (
         <div
-          className="grid min-h-0 flex-1 items-start gap-[22px]"
-          style={{ gridTemplateColumns: "240px 1fr 280px" }}
+          className="grid min-h-0 flex-1 gap-[22px]"
+          style={{ gridTemplateColumns: "1fr 340px" }}
         >
-          {/* 左カラム：曲一覧 */}
-          <div
-            className="h-full overflow-y-auto rounded-[20px] p-2"
-            style={{
-              background: "var(--color-surface)",
-              border: "1px solid var(--color-border-default)",
-            }}
-          >
-            {songs.map((s) => {
-              const isActive = s.id === activeId;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => setActiveId(s.id)}
-                  className="mb-0.5 w-full rounded-[12px] px-4 py-3.5 text-left transition-colors"
-                  style={{
-                    background: isActive ? "var(--color-primary-soft)" : "transparent",
-                  }}
-                >
-                  <p
-                    className="mb-1 text-[14px] font-semibold leading-snug"
-                    style={{ color: isActive ? "var(--color-primary)" : "var(--color-text-primary)" }}
-                  >
-                    {s.title}
-                  </p>
-                  <div className="text-[12px] text-muted-foreground">
-                    {s.artist || "Unknown artist"} · {s.lines.length} lines
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* 中央カラム：プレイヤー＋現在行の翻訳 */}
+          {/* 左カラム：プレイヤー＋現在行の翻訳 */}
           <div
             className="flex h-full flex-col overflow-y-auto rounded-[20px] p-[22px]"
             style={{
@@ -273,7 +262,7 @@ export default function SongsPage() {
                   onBlur={() => persistLines(lines)}
                   placeholder="このフレーズを日本語に訳してみましょう..."
                   rows={3}
-                  className="mb-4 flex-1 resize-none text-[14px]"
+                  className="mb-4 resize-y text-[14px]"
                   style={{ background: "var(--color-surface)" }}
                 />
                 <div className="mt-auto flex items-center justify-between gap-2">
