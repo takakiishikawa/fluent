@@ -19,7 +19,9 @@ import {
   createSong,
   updateSongLines,
   deleteSong,
+  fetchYoutubeMeta,
 } from "@/app/actions/songs";
+import { extractYoutubeVideoId } from "@/lib/youtube";
 import type { Song, SongLine } from "@/lib/types";
 import { YoutubePlayer, type YoutubePlayerHandle } from "@/components/youtube-player";
 
@@ -36,6 +38,20 @@ export default function SongsPage() {
   const [newVideoUrl, setNewVideoUrl] = useState("");
   const [newLyrics, setNewLyrics] = useState("");
   const [creating, setCreating] = useState(false);
+  const [fetchingMeta, setFetchingMeta] = useState(false);
+  const fetchedForVideoId = useRef<string | null>(null);
+
+  async function handleVideoUrlBlur() {
+    const videoId = extractYoutubeVideoId(newVideoUrl);
+    if (!videoId || fetchedForVideoId.current === videoId) return;
+    fetchedForVideoId.current = videoId;
+    setFetchingMeta(true);
+    const meta = await fetchYoutubeMeta(newVideoUrl);
+    setFetchingMeta(false);
+    if (!meta) return;
+    if (meta.title) setNewTitle(meta.title);
+    if (meta.artist) setNewArtist(meta.artist);
+  }
   const playerRef = useRef<YoutubePlayerHandle>(null);
 
   const load = useCallback(async () => {
@@ -81,7 +97,7 @@ export default function SongsPage() {
   }
 
   async function handleCreate() {
-    if (!newTitle.trim() || !newVideoUrl.trim() || !newLyrics.trim()) return;
+    if (!newVideoUrl.trim() || !newLyrics.trim()) return;
     setCreating(true);
     const { error, song } = await createSong({
       title: newTitle.trim(),
@@ -101,6 +117,7 @@ export default function SongsPage() {
     setNewArtist("");
     setNewVideoUrl("");
     setNewLyrics("");
+    fetchedForVideoId.current = null;
   }
 
   async function handleDelete(id: string) {
@@ -119,7 +136,7 @@ export default function SongsPage() {
   }
 
   return (
-    <div className="w-full">
+    <div className="flex h-full w-full min-h-0 flex-col">
       <div
         className="mb-1.5 text-[12.5px] font-semibold uppercase tracking-[0.06em]"
         style={{ color: "var(--color-accent)" }}
@@ -138,17 +155,15 @@ export default function SongsPage() {
 
       {!active ? (
         <EmptyState
+          className="flex-1"
           icon={<Music className="h-8 w-8" />}
           title="No songs yet"
           description='Add one with "Add song" — paste a YouTube link and the lyrics, then translate it line by line.'
         />
       ) : (
         <div
-          className="grid items-start gap-[22px]"
-          style={{
-            gridTemplateColumns: "240px 1fr 280px",
-            height: "calc(100vh - 190px)",
-          }}
+          className="grid min-h-0 flex-1 items-start gap-[22px]"
+          style={{ gridTemplateColumns: "240px 1fr 280px" }}
         >
           {/* 左カラム：曲一覧 */}
           <div
@@ -322,31 +337,44 @@ export default function SongsPage() {
         </div>
       )}
 
-      <Dialog open={showNewModal} onOpenChange={setShowNewModal}>
+      <Dialog
+        open={showNewModal}
+        onOpenChange={(open) => {
+          setShowNewModal(open);
+          if (!open) fetchedForVideoId.current = null;
+        }}
+      >
         <DialogContent className="max-w-[520px]">
           <DialogHeader>
             <DialogTitle>Add song</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <Input
+              autoFocus
+              value={newVideoUrl}
+              onChange={(e) => setNewVideoUrl(e.target.value)}
+              onBlur={handleVideoUrlBlur}
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+            <p className="text-[12px] text-muted-foreground">
+              {fetchingMeta
+                ? "Fetching title & artist from YouTube…"
+                : "Title and artist are filled in automatically from the video — edit if needed."}
+            </p>
+            <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Song title"
+              placeholder="Song title (auto-filled)"
             />
             <Input
               value={newArtist}
               onChange={(e) => setNewArtist(e.target.value)}
-              placeholder="Artist (optional)"
-            />
-            <Input
-              value={newVideoUrl}
-              onChange={(e) => setNewVideoUrl(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
+              placeholder="Artist (auto-filled)"
             />
             <Textarea
               value={newLyrics}
               onChange={(e) => setNewLyrics(e.target.value)}
-              placeholder="Paste the lyrics here, one line per line"
+              placeholder="Paste the full lyrics here"
               rows={8}
               className="text-[13px]"
             />
@@ -354,9 +382,7 @@ export default function SongsPage() {
           <DialogFooter>
             <Button
               onClick={handleCreate}
-              disabled={
-                creating || !newTitle.trim() || !newVideoUrl.trim() || !newLyrics.trim()
-              }
+              disabled={creating || !newVideoUrl.trim() || !newLyrics.trim()}
             >
               {creating ? "Adding..." : "Add"}
             </Button>

@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentLanguage } from "@/lib/language";
 import { revalidatePath } from "next/cache";
-import type { OutputTopic } from "@/lib/types";
+import type { OutputTopic, OutputResponseStatus } from "@/lib/types";
 
 export async function listOutputTopics(): Promise<OutputTopic[]> {
   const supabase = await createClient();
@@ -28,7 +28,14 @@ export async function createOutputTopic(
 
   const { data, error } = await supabase
     .from("output_topics")
-    .insert({ user_id: user.id, language, title, response: "", responses: [""] })
+    .insert({
+      user_id: user.id,
+      language,
+      title,
+      response: "",
+      responses: [""],
+      response_statuses: ["draft"],
+    })
     .select()
     .single();
 
@@ -43,7 +50,12 @@ export async function createOutputTopic(
 
 export async function updateOutputTopic(
   id: string,
-  patch: { title?: string; response?: string; responses?: string[] },
+  patch: {
+    title?: string;
+    response?: string;
+    responses?: string[];
+    response_statuses?: OutputResponseStatus[];
+  },
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase

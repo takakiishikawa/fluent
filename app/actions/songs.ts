@@ -17,6 +17,49 @@ export async function listSongs(): Promise<Song[]> {
   return (data ?? []) as Song[];
 }
 
+// YouTube oEmbed（キー不要の公開エンドポイント）で動画タイトル/チャンネル名を取得する
+export async function fetchYoutubeMeta(
+  videoUrl: string,
+): Promise<{ title: string; artist: string } | null> {
+  const videoId = extractYoutubeVideoId(videoUrl);
+  if (!videoId) return null;
+
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(
+      `https://www.youtube.com/watch?v=${videoId}`,
+    )}&format=json`;
+    const res = await fetch(oembedUrl);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { title?: string; author_name?: string };
+    return { title: data.title ?? "", artist: data.author_name ?? "" };
+  } catch (err) {
+    console.error("[fetchYoutubeMeta] failed:", err);
+    return null;
+  }
+}
+
+// 歌詞テキストを練習単位の行に分割する。改行はそのまま行として尊重しつつ、
+// 改行のない長い塊（貼り付け元によっては1段落になっていることがある）は
+// 文の区切り（.!?）でさらに分割する。ユーザーに手動で1行ずつ整形させない。
+function splitLyricsIntoLines(raw: string): SongLine[] {
+  const normalized = raw.replace(/\r\n?/g, "\n").trim();
+  const texts: string[] = [];
+  for (const rawLine of normalized.split(/\n+/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const sentences = line.match(/[^.!?]+[.!?]*(?:\s+|$)/g);
+    if (sentences && sentences.length > 1) {
+      for (const s of sentences) {
+        const t = s.trim();
+        if (t) texts.push(t);
+      }
+    } else {
+      texts.push(line);
+    }
+  }
+  return texts.map((text) => ({ text, translation: "" }));
+}
+
 export async function createSong(input: {
   title: string;
   artist: string;
@@ -34,13 +77,18 @@ export async function createSong(input: {
     return { error: "Enter a valid YouTube video URL" };
   }
 
-  const lines: SongLine[] = input.lyrics
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((text) => ({ text, translation: "" }));
+  const lines = splitLyricsIntoLines(input.lyrics);
   if (lines.length === 0) {
-    return { error: "Paste the song's lyrics, one line at a time" };
+    return { error: "Paste the song's lyrics" };
+  }
+
+  // タイトル未入力（oEmbed取得に失敗した等）ならサーバー側でも一度フォールバック取得を試みる
+  let title = input.title.trim();
+  let artist = input.artist.trim();
+  if (!title) {
+    const meta = await fetchYoutubeMeta(input.videoUrl);
+    title = meta?.title || "Untitled song";
+    if (!artist) artist = meta?.artist ?? "";
   }
 
   const language = await getCurrentLanguage();
@@ -49,8 +97,8 @@ export async function createSong(input: {
     .insert({
       user_id: user.id,
       language,
-      title: input.title,
-      artist: input.artist,
+      title,
+      artist,
       youtube_video_id: videoId,
       lines,
     })

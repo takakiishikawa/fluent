@@ -14,14 +14,17 @@ import {
   EmptyState,
   toast,
 } from "@takaki/go-design-system";
-import { Plus, PenLine, Trash2 } from "lucide-react";
+import { Plus, PenLine, Trash2, ExternalLink } from "lucide-react";
 import {
   listOutputTopics,
   createOutputTopic,
   updateOutputTopic,
   deleteOutputTopic,
 } from "@/app/actions/output";
-import type { OutputTopic } from "@/lib/types";
+import type { OutputTopic, OutputResponseStatus } from "@/lib/types";
+
+// Claude でレビュー・添削してもらう用の常設チャット
+const REVIEW_CHAT_URL = "https://claude.ai/chat/2bad3a13-dd33-4265-ad53-5192217de4ae";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -30,6 +33,63 @@ function formatDate(iso: string) {
 
 function wordCount(text: string) {
   return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
+
+// responses[i] に対応する status。未設定分は "draft" 扱い
+function statusesFor(topic: OutputTopic): OutputResponseStatus[] {
+  const versions = topic.responses?.length ? topic.responses : [""];
+  return versions.map((_, i) => topic.response_statuses?.[i] ?? "draft");
+}
+
+const STATUS_OPTIONS: { value: OutputResponseStatus; label: string }[] = [
+  { value: "draft", label: "Draft" },
+  { value: "revised", label: "Revised" },
+];
+
+function StatusToggle({
+  status,
+  onChange,
+}: {
+  status: OutputResponseStatus;
+  onChange: (next: OutputResponseStatus) => void;
+}) {
+  return (
+    <div
+      className="flex shrink-0 gap-0.5 rounded-full p-0.5"
+      style={{ background: "var(--color-surface-subtle)" }}
+    >
+      {STATUS_OPTIONS.map((o) => {
+        const isActive = status === o.value;
+        const activeColor = o.value === "revised" ? "var(--color-success)" : "var(--color-text-primary)";
+        const activeBg = o.value === "revised" ? "var(--color-success-subtle)" : "var(--color-surface)";
+        return (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            className="rounded-full px-3 py-1 text-[11.5px] font-semibold transition-colors"
+            style={{
+              background: isActive ? activeBg : "transparent",
+              color: isActive ? activeColor : "var(--color-text-secondary)",
+              boxShadow: isActive ? "var(--shadow-md)" : "none",
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatusDot({ status }: { status: OutputResponseStatus }) {
+  return (
+    <span
+      className="inline-block h-[7px] w-[7px] shrink-0 rounded-full"
+      style={{
+        background: status === "revised" ? "var(--color-success)" : "var(--color-warning)",
+      }}
+    />
+  );
 }
 
 export default function OutputPage() {
@@ -60,6 +120,8 @@ export default function OutputPage() {
     [topics, activeId],
   );
   const versions = active?.responses?.length ? active.responses : [""];
+  const statuses = active ? statusesFor(active) : ["draft" as OutputResponseStatus];
+  const currentStatus = statuses[versionIdx] ?? "draft";
 
   useEffect(() => {
     setVersionIdx(0);
@@ -86,6 +148,7 @@ export default function OutputPage() {
     const { error } = await updateOutputTopic(active.id, {
       responses: nextResponses,
       response: nextResponses[0] ?? "",
+      response_statuses: statuses,
     });
     setSaving(false);
     if (error) {
@@ -94,7 +157,9 @@ export default function OutputPage() {
     }
     setTopics((prev) =>
       prev.map((t) =>
-        t.id === active.id ? { ...t, responses: nextResponses } : t,
+        t.id === active.id
+          ? { ...t, responses: nextResponses, response_statuses: statuses }
+          : t,
       ),
     );
     toast.success("Saved");
@@ -103,12 +168,30 @@ export default function OutputPage() {
   function handleAddVersion() {
     if (!active) return;
     const nextResponses = [...versions, ""];
+    const nextStatuses = [...statuses, "draft" as OutputResponseStatus];
     setTopics((prev) =>
       prev.map((t) =>
-        t.id === active.id ? { ...t, responses: nextResponses } : t,
+        t.id === active.id
+          ? { ...t, responses: nextResponses, response_statuses: nextStatuses }
+          : t,
       ),
     );
     setVersionIdx(nextResponses.length - 1);
+  }
+
+  async function handleSetStatus(next: OutputResponseStatus) {
+    if (!active) return;
+    const nextStatuses = [...statuses];
+    nextStatuses[versionIdx] = next;
+    setTopics((prev) =>
+      prev.map((t) =>
+        t.id === active.id ? { ...t, response_statuses: nextStatuses } : t,
+      ),
+    );
+    const { error } = await updateOutputTopic(active.id, {
+      response_statuses: nextStatuses,
+    });
+    if (error) toast.error("Failed to update status");
   }
 
   async function handleCreate() {
@@ -142,7 +225,7 @@ export default function OutputPage() {
   }
 
   return (
-    <div className="w-full">
+    <div className="flex h-full w-full min-h-0 flex-col">
       <div
         className="mb-1.5 text-[12.5px] font-semibold uppercase tracking-[0.06em]"
         style={{ color: "var(--color-accent)" }}
@@ -153,15 +236,23 @@ export default function OutputPage() {
         <h1 className="text-[30px] font-bold text-foreground">
           Speak from your own words
         </h1>
-        <Button size="sm" variant="outline" onClick={() => setShowNewModal(true)}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          Add topic
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" asChild>
+            <a href={REVIEW_CHAT_URL} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-1.5" />
+              Review chat
+            </a>
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setShowNewModal(true)}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            Add topic
+          </Button>
+        </div>
       </div>
 
       <div
-        className="grid items-start gap-[22px]"
-        style={{ gridTemplateColumns: "280px 1fr", height: "calc(100vh - 190px)" }}
+        className="grid min-h-0 flex-1 items-start gap-[22px]"
+        style={{ gridTemplateColumns: "280px 1fr" }}
       >
         {/* 左カラム：トピック一覧 */}
         <div
@@ -202,6 +293,7 @@ export default function OutputPage() {
         {/* 右カラム：エディタ */}
         {!active ? (
           <EmptyState
+            className="h-full"
             icon={<PenLine className="h-8 w-8" />}
             title="No topics yet"
             description='Add one with "Add topic" and start writing what you want to say before your lesson.'

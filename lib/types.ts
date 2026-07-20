@@ -109,6 +109,8 @@ export interface PracticeLog {
   speaking_count: number;
 }
 
+export type OutputResponseStatus = "draft" | "revised";
+
 export interface OutputTopic {
   id: string;
   user_id: string;
@@ -116,6 +118,7 @@ export interface OutputTopic {
   title: string;
   response: string;
   responses: string[];
+  response_statuses: OutputResponseStatus[];
   created_at: string;
   updated_at: string;
 }
