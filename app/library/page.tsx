@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Input, Switch, toast } from "@takaki/go-design-system";
-import { Lock, Check, Sparkles } from "lucide-react";
+import { Lock, Check, SkipForward } from "lucide-react";
 import { toggleRound, masterItem, setItemNote } from "@/app/actions/practice";
 import { useCurrentLanguage } from "@/lib/language-context";
 
@@ -209,12 +209,12 @@ function InputTable({
       style={{ border: "1px solid var(--color-border-default)", background: "var(--color-surface)" }}
     >
       <div
-        className="flex items-center gap-4 px-[18px] py-2.5 text-[11.5px] font-bold uppercase tracking-[0.04em] text-muted-foreground"
+        className="sticky top-0 z-10 flex items-center gap-4 px-[18px] py-2.5 text-[11.5px] font-bold uppercase tracking-[0.04em] text-muted-foreground"
         style={{ background: "var(--color-surface-subtle)" }}
       >
         <div className="w-[28px] shrink-0">No.</div>
         <div className="flex-1">{kind === "grammar" ? "Grammar point" : "Phrase"}</div>
-        <div className="w-[280px] shrink-0">Write your own example</div>
+        <div className="w-[380px] shrink-0">Write your own example</div>
       </div>
       {visible.length === 0 ? (
         <div className="px-[18px] py-10 text-center text-sm text-muted-foreground">
@@ -261,7 +261,7 @@ function InputTable({
                 </div>
               </div>
 
-              <div className="w-[280px] shrink-0" style={{ opacity: locked ? 0.35 : 1 }}>
+              <div className="w-[380px] shrink-0" style={{ opacity: locked ? 0.35 : 1 }}>
                 {!locked && (
                   <ExampleInput
                     kind={kind}
@@ -288,7 +288,7 @@ function InputTable({
                     background: "var(--color-accent-soft)",
                   }}
                 >
-                  <Sparkles className="h-3 w-3" />
+                  <SkipForward className="h-3 w-3" />
                   Skip
                 </button>
               )}
