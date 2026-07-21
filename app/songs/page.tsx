@@ -220,9 +220,13 @@ export default function SongsPage() {
               </SelectContent>
             </Select>
           )}
-          <Button size="sm" variant="outline" onClick={() => setShowNewModal(true)}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add song
+          <Button
+            size="sm"
+            variant="outline"
+            title="Add song"
+            onClick={() => setShowNewModal(true)}
+          >
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -310,28 +314,28 @@ export default function SongsPage() {
                 className="mt-[18px] flex flex-1 flex-col rounded-[16px] p-5"
                 style={{ background: "var(--color-surface-subtle)" }}
               >
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[12px] font-semibold text-muted-foreground">
-                    Line {lineIndex + 1} / {lines.length}
-                  </span>
-                  <label className="flex items-center gap-1.5 text-[11.5px] font-semibold text-muted-foreground">
-                    Hint (JA)
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
+                      {lineIndex + 1}/{lines.length}
+                    </span>
+                    <p className="text-[20px] font-bold leading-snug text-foreground">
+                      {currentLine.text}
+                    </p>
+                    {showHint && (
+                      <p className="text-[13px] italic text-muted-foreground">
+                        {hintLoading
+                          ? "Translating…"
+                          : hint?.text === currentLine.text
+                            ? `— ${hint.translation}`
+                            : ""}
+                      </p>
+                    )}
+                  </div>
+                  <label className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                    JA
                     <Switch checked={showHint} onCheckedChange={setShowHint} />
                   </label>
-                </div>
-                <div className="mb-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-                  <p className="text-[20px] font-bold leading-snug text-foreground">
-                    {currentLine.text}
-                  </p>
-                  {showHint && (
-                    <p className="text-[13px] italic text-muted-foreground">
-                      {hintLoading
-                        ? "Translating…"
-                        : hint?.text === currentLine.text
-                          ? `— ${hint.translation}`
-                          : ""}
-                    </p>
-                  )}
                 </div>
                 <Textarea
                   value={currentLine.translation}
@@ -339,7 +343,7 @@ export default function SongsPage() {
                   onBlur={() => persistLines(lines)}
                   placeholder="このフレーズを日本語に訳してみましょう..."
                   rows={1}
-                  className="resize-y text-[14px]"
+                  className="resize-none text-[14px]"
                   style={{ background: "var(--color-surface)" }}
                 />
               </div>
