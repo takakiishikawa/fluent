@@ -182,6 +182,38 @@ export default function ShadowingPage() {
     setVideos((prev) => prev.filter((v) => v.id !== videoId));
   };
 
+  // プレイリスト1行分の「done」= 中の全動画をまとめてそのラウンドの完了ログに記録
+  const handleMarkPlaylistDone = async (playlistId: string): Promise<void> => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const group = videos.filter((v) => v.playlist_id === playlistId);
+    const toMark = group.filter((v) => v.lapCount === round - 1);
+    if (toMark.length === 0) return;
+
+    const rows = toMark.map((v) => ({
+      user_id: user.id,
+      video_id: v.id,
+      duration: v.duration,
+      lap: round,
+      language,
+    }));
+
+    const { error } = await supabase.from("youtube_logs").insert(rows);
+    if (error) {
+      toast.error("Failed to record");
+      return;
+    }
+
+    toast.success(`Round ${round} done!`);
+    const markedIds = new Set(toMark.map((v) => v.id));
+    setVideos((prev) =>
+      prev.map((v) => (markedIds.has(v.id) ? { ...v, lapCount: round } : v)),
+    );
+  };
+
   const handleDeletePlaylist = async (playlistId: string): Promise<void> => {
     if (!confirm("Delete this playlist and its videos?")) return;
     setDeletingPlaylistId(playlistId);
@@ -412,50 +444,34 @@ export default function ShadowingPage() {
 
           {language === "en" ? (
             <div className="space-y-[26px]">
-              {playlists.map((p) => {
-                const group = videos.filter((v) => v.playlist_id === p.id);
-                return (
-                  <div key={p.id}>
-                    <div className="mb-2 flex items-center justify-between">
-                      <h2 className="text-[14.5px] font-bold text-foreground">
-                        {p.title}{" "}
-                        <span className="text-[12px] font-medium text-muted-foreground">
-                          ({group.length})
-                        </span>
-                      </h2>
-                      <Button
-                        onClick={() => handleDeletePlaylist(p.id)}
-                        disabled={deletingPlaylistId === p.id}
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0 p-1 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                    {group.length > 0 && (
-                      <div
-                        className="overflow-hidden rounded-[20px] px-2"
-                        style={{ border: "1px solid var(--color-border-default)" }}
-                      >
-                        {group.map((video, i) => (
-                          <VideoRow
-                            key={video.id}
-                            position={i + 1}
-                            video={video}
-                            round={round}
-                            onMarkDone={handleMarkDone}
-                            onDelete={handleDeleteVideo}
-                          />
-                        ))}
-                      </div>
-                    )}
+              {playlists.length > 0 && (
+                <div>
+                  <h2 className="mb-2 text-[14.5px] font-bold text-foreground">
+                    Playlists
+                  </h2>
+                  <div
+                    className="overflow-hidden rounded-[20px] px-2"
+                    style={{ border: "1px solid var(--color-border-default)" }}
+                  >
+                    {playlists.map((p, i) => (
+                      <PlaylistRow
+                        key={p.id}
+                        position={i + 1}
+                        playlist={p}
+                        videos={videos.filter((v) => v.playlist_id === p.id)}
+                        round={round}
+                        onMarkDone={handleMarkPlaylistDone}
+                        onDelete={handleDeletePlaylist}
+                        deleting={deletingPlaylistId === p.id}
+                      />
+                    ))}
                   </div>
-                );
-              })}
+                </div>
+              )}
 
               {(() => {
                 const standalone = videos.filter((v) => !v.playlist_id);
+                if (standalone.length === 0) return null;
                 return (
                   <div>
                     <h2 className="mb-2 text-[14.5px] font-bold text-foreground">
@@ -464,23 +480,21 @@ export default function ShadowingPage() {
                         ({standalone.length})
                       </span>
                     </h2>
-                    {standalone.length > 0 && (
-                      <div
-                        className="overflow-hidden rounded-[20px] px-2"
-                        style={{ border: "1px solid var(--color-border-default)" }}
-                      >
-                        {standalone.map((video, i) => (
-                          <VideoRow
-                            key={video.id}
-                            position={i + 1}
-                            video={video}
-                            round={round}
-                            onMarkDone={handleMarkDone}
-                            onDelete={handleDeleteVideo}
-                          />
-                        ))}
-                      </div>
-                    )}
+                    <div
+                      className="overflow-hidden rounded-[20px] px-2"
+                      style={{ border: "1px solid var(--color-border-default)" }}
+                    >
+                      {standalone.map((video, i) => (
+                        <VideoRow
+                          key={video.id}
+                          position={i + 1}
+                          video={video}
+                          round={round}
+                          onMarkDone={handleMarkDone}
+                          onDelete={handleDeleteVideo}
+                        />
+                      ))}
+                    </div>
                   </div>
                 );
               })()}
@@ -792,5 +806,110 @@ function VideoRow({
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
     </a>
+  );
+}
+
+// プレイリストは1行にまとめ、中の動画がすべてそのラウンドを終えたら done にできる
+function PlaylistRow({
+  position,
+  playlist,
+  videos,
+  round,
+  onMarkDone,
+  onDelete,
+  deleting,
+}: {
+  position: number;
+  playlist: YoutubePlaylist;
+  videos: VideoWithLap[];
+  round: Round;
+  onMarkDone: (playlistId: string) => Promise<void>;
+  onDelete: (playlistId: string) => Promise<void>;
+  deleting: boolean;
+}) {
+  const [marking, setMarking] = useState(false);
+  const hasVideos = videos.length > 0;
+  const isDoneThisRound = hasVideos && videos.every((v) => v.lapCount >= round);
+  const canMark = hasVideos && videos.every((v) => v.lapCount >= round - 1) && !isDoneThisRound;
+  const locked = hasVideos && !isDoneThisRound && !canMark;
+  const thumbnail = playlist.thumbnail_url ?? videos[0]?.thumbnail_url ?? null;
+
+  const handleComplete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!canMark) return;
+    setMarking(true);
+    await onMarkDone(playlist.id);
+    setMarking(false);
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await onDelete(playlist.id);
+  };
+
+  return (
+    <div
+      className="group flex items-center gap-3.5 py-3"
+      style={{ borderTop: "1px solid var(--color-border-default)" }}
+    >
+      <span className="w-5 shrink-0 text-center text-[13px] font-semibold text-muted-foreground">
+        {position}
+      </span>
+      <div className="relative h-[64px] w-[112px] shrink-0 overflow-hidden rounded-[8px] bg-muted">
+        {thumbnail ? (
+          <img src={thumbnail} alt={playlist.title} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <ListVideo className="h-5 w-5 text-muted-foreground/30" />
+          </div>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            "text-[13.5px] font-medium leading-snug",
+            isDoneThisRound ? "text-muted-foreground" : "text-foreground",
+          )}
+        >
+          {playlist.title}
+        </p>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">
+          {videos.length} video{videos.length === 1 ? "" : "s"}
+        </p>
+      </div>
+      <button
+        onClick={handleComplete}
+        disabled={marking || locked || !hasVideos}
+        title={locked ? "Finish the previous round first" : undefined}
+        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-default"
+        style={{
+          border: `2px solid ${isDoneThisRound ? "var(--color-primary)" : "var(--color-border-default)"}`,
+          background: isDoneThisRound
+            ? "var(--color-primary)"
+            : locked
+              ? "var(--color-surface-subtle)"
+              : "transparent",
+          color: isDoneThisRound ? "var(--color-surface)" : "var(--color-text-secondary)",
+        }}
+      >
+        {isDoneThisRound ? (
+          <Check className="h-3.5 w-3.5" strokeWidth={3} />
+        ) : locked ? (
+          <Lock className="h-3 w-3" />
+        ) : null}
+      </button>
+      <Button
+        onClick={handleDelete}
+        disabled={deleting}
+        title="Delete"
+        variant="ghost"
+        size="sm"
+        className="shrink-0 p-1 text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100 disabled:opacity-30"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
   );
 }
