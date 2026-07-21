@@ -9,8 +9,8 @@ import { useCurrentLanguage } from "@/lib/language-context";
 type Category = "grammar" | "expression" | "word";
 type Counts = Record<Category, number>;
 
-const COUNT_PRESETS = [10, 30] as const;
-const COUNT_TAGS = ["Quick", "Focused"] as const;
+const COUNT_PRESETS = [10, 30, 50] as const;
+const COUNT_TAGS = ["Quick", "Focused", "Deep"] as const;
 
 const TABLE_BY_CATEGORY: Record<Category, string> = {
   grammar: "grammar",
@@ -84,13 +84,10 @@ export function RepeatingPickerDialog({
 
   const total = counts ? counts[category] : 0;
   const seen = new Set<number>();
-  const countOptions = [
-    ...COUNT_PRESETS.map((n, i) => ({
-      count: Math.min(n, total),
-      tag: COUNT_TAGS[i],
-    })),
-    { count: total, tag: "Deep" },
-  ].filter((o) => {
+  const countOptions = COUNT_PRESETS.map((n, i) => ({
+    count: Math.min(n, total),
+    tag: COUNT_TAGS[i],
+  })).filter((o) => {
     if (o.count <= 0 || seen.has(o.count)) return false;
     seen.add(o.count);
     return true;
