@@ -119,6 +119,7 @@ export interface OutputTopic {
   response: string;
   responses: string[];
   response_statuses: OutputResponseStatus[];
+  read_aloud_counts: number[];
   created_at: string;
   updated_at: string;
 }

@@ -14,7 +14,7 @@ import {
   EmptyState,
   toast,
 } from "@takaki/go-design-system";
-import { Plus, PenLine, Trash2, ExternalLink } from "lucide-react";
+import { Plus, PenLine, Trash2, ExternalLink, Mic, Check } from "lucide-react";
 import {
   listOutputTopics,
   createOutputTopic,
@@ -92,6 +92,39 @@ function StatusDot({ status }: { status: OutputResponseStatus }) {
   );
 }
 
+const READ_ALOUD_GOAL = 10;
+
+// responses[i] に対応する音読回数。未設定分は 0 扱い
+function readCountsFor(topic: OutputTopic): number[] {
+  const versions = topic.responses?.length ? topic.responses : [""];
+  return versions.map((_, i) => topic.read_aloud_counts?.[i] ?? 0);
+}
+
+function ReadAloudButton({
+  count,
+  onIncrement,
+}: {
+  count: number;
+  onIncrement: () => void;
+}) {
+  const done = count >= READ_ALOUD_GOAL;
+  return (
+    <button
+      onClick={onIncrement}
+      disabled={done}
+      title={done ? "音読10回、完了！" : "音読したらタップ"}
+      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors disabled:cursor-default"
+      style={{
+        background: done ? "var(--color-success-subtle)" : "var(--color-surface-subtle)",
+        color: done ? "var(--color-success)" : "var(--color-text-secondary)",
+      }}
+    >
+      {done ? <Check className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+      Read aloud {count}/{READ_ALOUD_GOAL}
+    </button>
+  );
+}
+
 export default function OutputPage() {
   const [topics, setTopics] = useState<OutputTopic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +155,8 @@ export default function OutputPage() {
   const versions = active?.responses?.length ? active.responses : [""];
   const statuses = active ? statusesFor(active) : ["draft" as OutputResponseStatus];
   const currentStatus = statuses[versionIdx] ?? "draft";
+  const readCounts = active ? readCountsFor(active) : [0];
+  const currentReadCount = readCounts[versionIdx] ?? 0;
 
   useEffect(() => {
     setVersionIdx(0);
@@ -149,6 +184,7 @@ export default function OutputPage() {
       responses: nextResponses,
       response: nextResponses[0] ?? "",
       response_statuses: statuses,
+      read_aloud_counts: readCounts,
     });
     setSaving(false);
     if (error) {
@@ -158,7 +194,12 @@ export default function OutputPage() {
     setTopics((prev) =>
       prev.map((t) =>
         t.id === active.id
-          ? { ...t, responses: nextResponses, response_statuses: statuses }
+          ? {
+              ...t,
+              responses: nextResponses,
+              response_statuses: statuses,
+              read_aloud_counts: readCounts,
+            }
           : t,
       ),
     );
@@ -169,10 +210,16 @@ export default function OutputPage() {
     if (!active) return;
     const nextResponses = [...versions, ""];
     const nextStatuses = [...statuses, "draft" as OutputResponseStatus];
+    const nextReadCounts = [...readCounts, 0];
     setTopics((prev) =>
       prev.map((t) =>
         t.id === active.id
-          ? { ...t, responses: nextResponses, response_statuses: nextStatuses }
+          ? {
+              ...t,
+              responses: nextResponses,
+              response_statuses: nextStatuses,
+              read_aloud_counts: nextReadCounts,
+            }
           : t,
       ),
     );
@@ -192,6 +239,21 @@ export default function OutputPage() {
       response_statuses: nextStatuses,
     });
     if (error) toast.error("Failed to update status");
+  }
+
+  async function handleReadAloud() {
+    if (!active || currentReadCount >= READ_ALOUD_GOAL) return;
+    const nextReadCounts = [...readCounts];
+    nextReadCounts[versionIdx] = currentReadCount + 1;
+    setTopics((prev) =>
+      prev.map((t) =>
+        t.id === active.id ? { ...t, read_aloud_counts: nextReadCounts } : t,
+      ),
+    );
+    const { error } = await updateOutputTopic(active.id, {
+      read_aloud_counts: nextReadCounts,
+    });
+    if (error) toast.error("Failed to save read-aloud count");
   }
 
   async function handleCreate() {
@@ -317,12 +379,9 @@ export default function OutputPage() {
               border: "1px solid var(--color-border-default)",
             }}
           >
-            <div className="mb-1.5 flex items-center justify-between gap-3">
-              <p className="text-[12.5px] text-muted-foreground">
-                {formatDate(active.created_at)}
-              </p>
-              <StatusToggle status={currentStatus} onChange={handleSetStatus} />
-            </div>
+            <p className="mb-1.5 text-[12.5px] text-muted-foreground">
+              {formatDate(active.created_at)}
+            </p>
             <InlineEdit
               value={active.title}
               onChange={handleTitleChange}
@@ -356,6 +415,9 @@ export default function OutputPage() {
               >
                 + Add version
               </button>
+              <div className="ml-auto">
+                <StatusToggle status={currentStatus} onChange={handleSetStatus} />
+              </div>
             </div>
             <Textarea
               value={response}
@@ -365,9 +427,12 @@ export default function OutputPage() {
               style={{ background: "var(--color-background)" }}
             />
             <div className="mt-3.5 flex shrink-0 items-center justify-between">
-              <span className="text-[12.5px] text-muted-foreground tabular-nums">
-                {wordCount(response)} words
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[12.5px] text-muted-foreground tabular-nums">
+                  {wordCount(response)} words
+                </span>
+                <ReadAloudButton count={currentReadCount} onIncrement={handleReadAloud} />
+              </div>
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"

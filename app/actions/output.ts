@@ -35,6 +35,7 @@ export async function createOutputTopic(
       response: "",
       responses: [""],
       response_statuses: ["draft"],
+      read_aloud_counts: [0],
     })
     .select()
     .single();
@@ -55,6 +56,7 @@ export async function updateOutputTopic(
     response?: string;
     responses?: string[];
     response_statuses?: OutputResponseStatus[];
+    read_aloud_counts?: number[];
   },
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
