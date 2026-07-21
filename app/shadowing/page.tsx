@@ -19,7 +19,6 @@ import {
   Lock,
   Trash2,
   RefreshCw,
-  Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@takaki/go-design-system";
@@ -65,7 +64,6 @@ export default function ShadowingPage() {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [setupUrl, setSetupUrl] = useState("");
   const [setupError, setSetupError] = useState("");
-  const [showManageModal, setShowManageModal] = useState(false);
   const [deletingPlaylistId, setDeletingPlaylistId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -332,25 +330,15 @@ export default function ShadowingPage() {
         </div>
         <div className="flex items-center gap-2">
           {language === "en" ? (
-            <>
-              <Button
-                onClick={() => setShowManageModal(true)}
-                size="sm"
-                variant="outline"
-              >
-                <Settings2 className="h-4 w-4 mr-1.5" />
-                Manage library
-              </Button>
-              <Button
-                onClick={() => handleImportRyan()}
-                disabled={importingRyan}
-                size="sm"
-                variant="outline"
-              >
-                <RefreshCw className={cn("h-4 w-4 mr-1.5", importingRyan && "animate-spin")} />
-                {importingRyan ? "Importing..." : "Import Ryan"}
-              </Button>
-            </>
+            <Button
+              onClick={() => handleImportRyan()}
+              disabled={importingRyan}
+              size="sm"
+              variant="outline"
+            >
+              <RefreshCw className={cn("h-4 w-4 mr-1.5", importingRyan && "animate-spin")} />
+              {importingRyan ? "Importing..." : "Import Ryan"}
+            </Button>
           ) : (
             <>
               <Button
@@ -422,21 +410,98 @@ export default function ShadowingPage() {
             })}
           </div>
 
-          <div
-            className="overflow-hidden rounded-[20px] px-2"
-            style={{ border: "1px solid var(--color-border-default)" }}
-          >
-            {videos.map((video, i) => (
-              <VideoRow
-                key={video.id}
-                position={i + 1}
-                video={video}
-                round={round}
-                onMarkDone={handleMarkDone}
-                onDelete={handleDeleteVideo}
-              />
-            ))}
-          </div>
+          {language === "en" ? (
+            <div className="space-y-[26px]">
+              {playlists.map((p) => {
+                const group = videos.filter((v) => v.playlist_id === p.id);
+                return (
+                  <div key={p.id}>
+                    <div className="mb-2 flex items-center justify-between">
+                      <h2 className="text-[14.5px] font-bold text-foreground">
+                        {p.title}{" "}
+                        <span className="text-[12px] font-medium text-muted-foreground">
+                          ({group.length})
+                        </span>
+                      </h2>
+                      <Button
+                        onClick={() => handleDeletePlaylist(p.id)}
+                        disabled={deletingPlaylistId === p.id}
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 p-1 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {group.length > 0 && (
+                      <div
+                        className="overflow-hidden rounded-[20px] px-2"
+                        style={{ border: "1px solid var(--color-border-default)" }}
+                      >
+                        {group.map((video, i) => (
+                          <VideoRow
+                            key={video.id}
+                            position={i + 1}
+                            video={video}
+                            round={round}
+                            onMarkDone={handleMarkDone}
+                            onDelete={handleDeleteVideo}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {(() => {
+                const standalone = videos.filter((v) => !v.playlist_id);
+                return (
+                  <div>
+                    <h2 className="mb-2 text-[14.5px] font-bold text-foreground">
+                      Not in a playlist{" "}
+                      <span className="text-[12px] font-medium text-muted-foreground">
+                        ({standalone.length})
+                      </span>
+                    </h2>
+                    {standalone.length > 0 && (
+                      <div
+                        className="overflow-hidden rounded-[20px] px-2"
+                        style={{ border: "1px solid var(--color-border-default)" }}
+                      >
+                        {standalone.map((video, i) => (
+                          <VideoRow
+                            key={video.id}
+                            position={i + 1}
+                            video={video}
+                            round={round}
+                            onMarkDone={handleMarkDone}
+                            onDelete={handleDeleteVideo}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <div
+              className="overflow-hidden rounded-[20px] px-2"
+              style={{ border: "1px solid var(--color-border-default)" }}
+            >
+              {videos.map((video, i) => (
+                <VideoRow
+                  key={video.id}
+                  position={i + 1}
+                  video={video}
+                  round={round}
+                  onMarkDone={handleMarkDone}
+                  onDelete={handleDeleteVideo}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
 
@@ -616,107 +681,6 @@ export default function ShadowingPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ライブラリ管理: 再生リスト・未所属動画の一覧と削除 */}
-      <Dialog open={showManageModal} onOpenChange={setShowManageModal}>
-        <DialogContent className="max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle>Manage Ryan&apos;s library</DialogTitle>
-          </DialogHeader>
-          <div className="max-h-[70vh] space-y-5 overflow-y-auto">
-            <div>
-              <p className="mb-1.5 text-sm font-medium">
-                Playlists ({playlists.length})
-              </p>
-              {playlists.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No playlists imported yet</p>
-              ) : (
-                <div className="space-y-1">
-                  {playlists.map((p) => {
-                    const count = videos.filter((v) => v.playlist_id === p.id).length;
-                    return (
-                      <div
-                        key={p.id}
-                        className="flex items-center gap-3 rounded-[12px] px-3 py-2"
-                        style={{ border: "1px solid var(--color-border-default)" }}
-                      >
-                        {p.thumbnail_url ? (
-                          <img
-                            src={p.thumbnail_url}
-                            alt=""
-                            className="h-10 w-16 shrink-0 rounded object-cover"
-                          />
-                        ) : (
-                          <span className="h-10 w-16 shrink-0 rounded bg-muted" />
-                        )}
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-                          {p.title}
-                        </span>
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          {count} video{count === 1 ? "" : "s"}
-                        </span>
-                        <Button
-                          onClick={() => handleDeletePlaylist(p.id)}
-                          disabled={deletingPlaylistId === p.id}
-                          variant="ghost"
-                          size="sm"
-                          className="shrink-0 p-1 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <p className="mb-1.5 text-sm font-medium">
-                Not in a playlist (
-                {videos.filter((v) => !v.playlist_id).length})
-              </p>
-              {videos.filter((v) => !v.playlist_id).length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Every video belongs to a playlist
-                </p>
-              ) : (
-                <div className="space-y-1">
-                  {videos
-                    .filter((v) => !v.playlist_id)
-                    .map((v) => (
-                      <div
-                        key={v.id}
-                        className="flex items-center gap-3 rounded-[12px] px-3 py-2"
-                        style={{ border: "1px solid var(--color-border-default)" }}
-                      >
-                        {v.thumbnail_url ? (
-                          <img
-                            src={v.thumbnail_url}
-                            alt=""
-                            className="h-10 w-16 shrink-0 rounded object-cover"
-                          />
-                        ) : (
-                          <span className="h-10 w-16 shrink-0 rounded bg-muted" />
-                        )}
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-                          {v.title}
-                        </span>
-                        <Button
-                          onClick={() => handleDeleteVideo(v.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="shrink-0 p-1 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
