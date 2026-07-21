@@ -41,43 +41,26 @@ function statusesFor(topic: OutputTopic): OutputResponseStatus[] {
   return versions.map((_, i) => topic.response_statuses?.[i] ?? "draft");
 }
 
-const STATUS_OPTIONS: { value: OutputResponseStatus; label: string }[] = [
-  { value: "draft", label: "Draft" },
-  { value: "revised", label: "Revised" },
-];
-
-function StatusToggle({
+function StatusTag({
   status,
   onChange,
 }: {
   status: OutputResponseStatus;
   onChange: (next: OutputResponseStatus) => void;
 }) {
+  const isRevised = status === "revised";
   return (
-    <div
-      className="flex shrink-0 gap-0.5 rounded-full p-0.5"
-      style={{ background: "var(--color-surface-subtle)" }}
+    <button
+      onClick={() => onChange(isRevised ? "draft" : "revised")}
+      title="Click to toggle Draft / Revised"
+      className="shrink-0 rounded-full px-3 py-1 text-[11.5px] font-semibold transition-colors"
+      style={{
+        background: isRevised ? "var(--color-success-subtle)" : "var(--color-surface-subtle)",
+        color: isRevised ? "var(--color-success)" : "var(--color-text-secondary)",
+      }}
     >
-      {STATUS_OPTIONS.map((o) => {
-        const isActive = status === o.value;
-        const activeColor = o.value === "revised" ? "var(--color-success)" : "var(--color-text-primary)";
-        const activeBg = o.value === "revised" ? "var(--color-success-subtle)" : "var(--color-surface)";
-        return (
-          <button
-            key={o.value}
-            onClick={() => onChange(o.value)}
-            className="rounded-full px-3 py-1 text-[11.5px] font-semibold transition-colors"
-            style={{
-              background: isActive ? activeBg : "transparent",
-              color: isActive ? activeColor : "var(--color-text-secondary)",
-              boxShadow: isActive ? "var(--shadow-md)" : "none",
-            }}
-          >
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
+      {isRevised ? "Revised" : "Draft"}
+    </button>
   );
 }
 
@@ -415,8 +398,9 @@ export default function OutputPage() {
               >
                 + Add version
               </button>
-              <div className="ml-auto">
-                <StatusToggle status={currentStatus} onChange={handleSetStatus} />
+              <div className="ml-auto flex items-center gap-2">
+                <ReadAloudButton count={currentReadCount} onIncrement={handleReadAloud} />
+                <StatusTag status={currentStatus} onChange={handleSetStatus} />
               </div>
             </div>
             <Textarea
@@ -427,12 +411,9 @@ export default function OutputPage() {
               style={{ background: "var(--color-background)" }}
             />
             <div className="mt-3.5 flex shrink-0 items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-[12.5px] text-muted-foreground tabular-nums">
-                  {wordCount(response)} words
-                </span>
-                <ReadAloudButton count={currentReadCount} onIncrement={handleReadAloud} />
-              </div>
+              <span className="text-[12.5px] text-muted-foreground tabular-nums">
+                {wordCount(response)} words
+              </span>
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
