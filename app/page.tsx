@@ -249,9 +249,14 @@ export default async function HomePage() {
     t.responses.some((r) => r.trim().length > 0);
   const outputTopics = outputTopicsResult.data ?? [];
   const outputReadyCount = outputTopics.filter(hasWritten).length;
-  const outputThisWeek = outputTopics.filter(
-    (t) => hasWritten(t) && t.updated_at >= weekAgoISO,
-  ).length;
+  // 週内に触ったトピックの「書けているバージョン数」を合算する（バージョン単位でカウント）
+  const outputThisWeek = outputTopics
+    .filter((t) => t.updated_at >= weekAgoISO)
+    .reduce(
+      (sum, t) =>
+        sum + t.responses.filter((r: string) => r.trim().length > 0).length,
+      0,
+    );
 
   // ── 次の金曜日までの日数 ──
   const dow = now.getDay(); // 0=Sun..6=Sat
