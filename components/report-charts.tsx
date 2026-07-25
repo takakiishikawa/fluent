@@ -208,7 +208,7 @@ export function ReportCharts({
         config={repeatingChartConfig}
         xKey="label"
         yKeys={repeatingYKeys}
-        title="Repeating (monthly)"
+        title="Repeating"
         unit="reps"
         height={170}
       />
@@ -217,7 +217,7 @@ export function ReportCharts({
         config={shadowingConfig}
         xKey="label"
         yKeys={["minutes"]}
-        title={`${shadowingLabel} (monthly)`}
+        title={shadowingLabel}
         unit="min"
         height={170}
       />
@@ -226,7 +226,7 @@ export function ReportCharts({
         config={outputConfig}
         xKey="label"
         yKeys={["responses"]}
-        title="Output (monthly)"
+        title="Output"
         unit="res."
         height={170}
       />
@@ -237,7 +237,7 @@ export function ReportCharts({
             config={inputConfig}
             xKey="label"
             yKeys={["rounds"]}
-            title="Input (monthly)"
+            title="Input"
             unit="rounds"
             height={170}
           />
@@ -246,7 +246,7 @@ export function ReportCharts({
             config={songsConfig}
             xKey="label"
             yKeys={["songs"]}
-            title="Songs (monthly)"
+            title="Songs"
             unit="songs"
             height={170}
           />
