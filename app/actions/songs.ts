@@ -9,18 +9,6 @@ import type { Song, SongLine } from "@/lib/types";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// 1回のAPI呼び出しに全行分をまとめて投げると、出力トークン量が多くなり
-// (55行 × 3項目 等) 生成に数十秒〜数分かかる。行をチャンクに分けて並列に
-// 呼び出すことで、体感速度を大きく改善する
-const CHUNK_SIZE = 12;
-function chunk<T>(items: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
-}
-
 // ── 曲追加時: 公式和訳 + 語彙解説 + 文法解説をまとめて生成 ──
 
 type LineAnalysis = {
@@ -62,7 +50,7 @@ const SONG_ANALYZE_TOOL_SCHEMA = {
   required: ["lines"],
 };
 
-async function analyzeSongLinesChunk(texts: string[]): Promise<LineAnalysis[]> {
+async function analyzeSongLines(texts: string[]): Promise<LineAnalysis[]> {
   if (texts.length === 0) return [];
 
   const userMessage = `Lyrics lines (analyze each one):\n${texts
@@ -70,8 +58,8 @@ async function analyzeSongLinesChunk(texts: string[]): Promise<LineAnalysis[]> {
     .join("\n")}`;
 
   const message = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 4000,
+    model: "claude-sonnet-5",
+    max_tokens: 16000,
     system: SONG_ANALYZE_SYSTEM_PROMPT,
     tools: [
       {
@@ -93,13 +81,6 @@ async function analyzeSongLinesChunk(texts: string[]): Promise<LineAnalysis[]> {
   return texts.map(
     (_, i) => lines[i] ?? { translation: "", vocabNotes: "", grammarNotes: "" },
   );
-}
-
-async function analyzeSongLines(texts: string[]): Promise<LineAnalysis[]> {
-  if (texts.length === 0) return [];
-  const chunks = chunk(texts, CHUNK_SIZE);
-  const results = await Promise.all(chunks.map((c) => analyzeSongLinesChunk(c)));
-  return results.flat();
 }
 
 // ── レビュー時: 自分の訳と公式訳の違いについてのコメントを生成 ──
@@ -128,7 +109,7 @@ const DIFF_TOOL_SCHEMA = {
   required: ["comments"],
 };
 
-async function compareTranslationsChunk(
+async function compareTranslations(
   items: { text: string; own: string; reference: string }[],
 ): Promise<string[]> {
   if (items.length === 0) return [];
@@ -141,8 +122,8 @@ async function compareTranslationsChunk(
     .join("\n\n");
 
   const message = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 3000,
+    model: "claude-sonnet-5",
+    max_tokens: 8192,
     system: DIFF_SYSTEM_PROMPT,
     tools: [
       {
@@ -161,15 +142,6 @@ async function compareTranslationsChunk(
   }
   const { comments } = toolUse.input as { comments: string[] };
   return items.map((_, i) => comments[i] ?? "");
-}
-
-async function compareTranslations(
-  items: { text: string; own: string; reference: string }[],
-): Promise<string[]> {
-  if (items.length === 0) return [];
-  const chunks = chunk(items, CHUNK_SIZE);
-  const results = await Promise.all(chunks.map((c) => compareTranslationsChunk(c)));
-  return results.flat();
 }
 
 export async function listSongs(): Promise<Song[]> {
