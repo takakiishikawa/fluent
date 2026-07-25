@@ -677,6 +677,23 @@ export async function toggleUnderstood(
   revalidatePath("/library");
 }
 
+// ラウンドごとに独立した「自分で書く例文」。前のラウンドの内容は引き継がず、
+// 各ラウンドは空の状態から書き始める
+export async function setGrammarRoundExample(
+  id: string,
+  round: 1 | 2 | 3,
+  example: string,
+): Promise<void> {
+  const supabase = await createClient();
+  const column = `round${round}_example`;
+  const { error } = await supabase
+    .from("grammar")
+    .update({ [column]: example.trim() || null })
+    .eq("id", id);
+  if (error) throw error;
+  revalidatePath("/library");
+}
+
 export async function toggleRound(
   kind: "grammar" | "expression",
   id: string,
