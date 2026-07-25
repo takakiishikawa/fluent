@@ -132,7 +132,6 @@ export default function OutputPage() {
   const [topics, setTopics] = useState<OutputTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [versionIdx, setVersionIdx] = useState(0);
   const [response, setResponse] = useState("");
   const [saving, setSaving] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -155,20 +154,16 @@ export default function OutputPage() {
     () => topics.find((t) => t.id === activeId) ?? null,
     [topics, activeId],
   );
-  const versions = active?.responses?.length ? active.responses : [""];
+  const savedResponse = active?.responses?.[0] ?? active?.response ?? "";
   const statuses = active ? statusesFor(active) : ["draft" as OutputResponseStatus];
-  const currentStatus = statuses[versionIdx] ?? "draft";
+  const currentStatus = statuses[0] ?? "draft";
   const readCounts = active ? readCountsFor(active) : [0];
-  const currentReadCount = readCounts[versionIdx] ?? 0;
+  const currentReadCount = readCounts[0] ?? 0;
 
   useEffect(() => {
-    setVersionIdx(0);
-  }, [active?.id]);
-
-  useEffect(() => {
-    setResponse(versions[versionIdx] ?? "");
+    setResponse(savedResponse);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active?.id, versionIdx, active?.responses]);
+  }, [active?.id, active?.responses, active?.response]);
 
   async function handleTitleChange(next: string) {
     if (!active || !next.trim() || next === active.title) return;
@@ -181,11 +176,9 @@ export default function OutputPage() {
   async function handleSaveResponse() {
     if (!active) return;
     setSaving(true);
-    const nextResponses = [...versions];
-    nextResponses[versionIdx] = response;
     const { error } = await updateOutputTopic(active.id, {
-      responses: nextResponses,
-      response: nextResponses[0] ?? "",
+      responses: [response],
+      response,
       response_statuses: statuses,
       read_aloud_counts: readCounts,
     });
@@ -199,7 +192,8 @@ export default function OutputPage() {
         t.id === active.id
           ? {
               ...t,
-              responses: nextResponses,
+              responses: [response],
+              response,
               response_statuses: statuses,
               read_aloud_counts: readCounts,
             }
@@ -209,30 +203,9 @@ export default function OutputPage() {
     toast.success("Saved");
   }
 
-  function handleAddVersion() {
-    if (!active) return;
-    const nextResponses = [...versions, ""];
-    const nextStatuses = [...statuses, "draft" as OutputResponseStatus];
-    const nextReadCounts = [...readCounts, 0];
-    setTopics((prev) =>
-      prev.map((t) =>
-        t.id === active.id
-          ? {
-              ...t,
-              responses: nextResponses,
-              response_statuses: nextStatuses,
-              read_aloud_counts: nextReadCounts,
-            }
-          : t,
-      ),
-    );
-    setVersionIdx(nextResponses.length - 1);
-  }
-
   async function handleSetStatus(next: OutputResponseStatus) {
     if (!active) return;
-    const nextStatuses = [...statuses];
-    nextStatuses[versionIdx] = next;
+    const nextStatuses = [next];
     setTopics((prev) =>
       prev.map((t) =>
         t.id === active.id ? { ...t, response_statuses: nextStatuses } : t,
@@ -246,8 +219,7 @@ export default function OutputPage() {
 
   async function handleReadAloud() {
     if (!active || currentReadCount >= READ_ALOUD_GOAL) return;
-    const nextReadCounts = [...readCounts];
-    nextReadCounts[versionIdx] = currentReadCount + 1;
+    const nextReadCounts = [currentReadCount + 1];
     setTopics((prev) =>
       prev.map((t) =>
         t.id === active.id ? { ...t, read_aloud_counts: nextReadCounts } : t,
@@ -397,43 +369,15 @@ export default function OutputPage() {
               border: "1px solid var(--color-border-default)",
             }}
           >
-            <p className="mb-1.5 text-[12.5px] text-muted-foreground">
-              {formatDate(active.updated_at)}
-            </p>
-            <InlineEdit
-              value={active.title}
-              onChange={handleTitleChange}
-              className="mb-4 w-full border-0 border-b border-dashed pb-3.5 text-[18px] font-bold text-foreground"
-              inputClassName="border-0 border-b border-dashed pb-3.5 text-[18px] font-bold"
-              placeholder="Enter a topic..."
-            />
-            <div className="mb-3 flex flex-wrap items-center gap-1.5">
-              {versions.map((_, i) => {
-                const isActive = i === versionIdx;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => setVersionIdx(i)}
-                    className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors"
-                    style={{
-                      border: `1px solid ${isActive ? "var(--color-primary)" : "var(--color-border-default)"}`,
-                      background: isActive ? "var(--color-primary-soft)" : "var(--color-surface)",
-                      color: isActive ? "var(--color-primary)" : "var(--color-text-secondary)",
-                    }}
-                  >
-                    <StatusDot status={statuses[i] ?? "draft"} />
-                    Version {i + 1}
-                  </button>
-                );
-              })}
-              <button
-                onClick={handleAddVersion}
-                className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-muted-foreground"
-                style={{ border: "1px dashed var(--color-border-default)" }}
-              >
-                + Add version
-              </button>
-              <div className="ml-auto flex items-center gap-2">
+            <div className="mb-4 flex items-start justify-between gap-3 border-b border-dashed pb-3.5">
+              <InlineEdit
+                value={active.title}
+                onChange={handleTitleChange}
+                className="w-full flex-1 border-0 text-[18px] font-bold text-foreground"
+                inputClassName="border-0 text-[18px] font-bold"
+                placeholder="Enter a topic..."
+              />
+              <div className="flex shrink-0 items-center gap-2 pt-0.5">
                 <ReadAloudButton count={currentReadCount} onIncrement={handleReadAloud} />
                 <StatusTag status={currentStatus} onChange={handleSetStatus} />
               </div>
@@ -442,7 +386,10 @@ export default function OutputPage() {
               value={response}
               onChange={(e) => setResponse(e.target.value)}
               placeholder="Write your response in your own words..."
-              className="min-h-[200px] w-full flex-1 resize-y text-[18px] leading-relaxed"
+              // flex-1（flex-basis:0 + grow）はflexレイアウトが毎フレーム高さを
+              // 再計算し直すため、textareaのネイティブresize(縦ドラッグ)と競合して
+              // ドラッグしても伸びなくなる。flex-1は外し、min-hだけで初期の高さを確保する
+              className="min-h-[420px] w-full resize-y text-[18px] leading-relaxed"
               style={{ background: "var(--color-background)" }}
             />
             <div className="mt-3.5 flex shrink-0 items-center justify-between">
@@ -462,7 +409,7 @@ export default function OutputPage() {
                 <Button
                   size="sm"
                   onClick={handleSaveResponse}
-                  disabled={saving || response === (versions[versionIdx] ?? "")}
+                  disabled={saving || response === savedResponse}
                 >
                   {saving ? "Saving..." : "Save"}
                 </Button>
