@@ -23,8 +23,8 @@ import {
 } from "@/app/actions/output";
 import type { OutputTopic, OutputResponseStatus } from "@/lib/types";
 
-// Claude でレビュー・添削してもらう用の常設チャット
-const REVIEW_CHAT_URL = "https://claude.ai/chat/2bad3a13-dd33-4265-ad53-5192217de4ae";
+// Claude でレビュー・添削してもらう用の Fluent_Output プロジェクト（新規チャットから開始）
+const REVIEW_CHAT_URL = "https://claude.ai/project/019f97a4-3a56-72ff-8620-6864963fe7d5";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
