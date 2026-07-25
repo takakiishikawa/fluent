@@ -488,21 +488,13 @@ export default function SongsPage() {
               </div>
             </div>
 
-            <div
-              className="mt-3.5 flex items-center justify-between gap-3 rounded-full px-4 py-2"
-              style={{ background: "var(--color-surface-subtle)" }}
-            >
-              <span className="text-[12px] font-semibold text-muted-foreground">
-                {translatedCount}/{lines.length} lines translated
-              </span>
-              <Button
-                size="sm"
-                disabled={!allTranslated || startingReview}
-                onClick={handleStartReview}
-              >
-                {startingReview ? "Preparing review..." : "Start review →"}
-              </Button>
-            </div>
+            {backfilling && (
+              <p className="mt-3.5 px-1 text-[11.5px] text-muted-foreground">
+                ✨ Analyzing lyrics in the background — vocab &amp; grammar notes
+                for the review page will be ready shortly. You can keep
+                translating in the meantime.
+              </p>
+            )}
 
             {currentLine && (
               <div
@@ -521,11 +513,32 @@ export default function SongsPage() {
                   value={currentLine.translation}
                   onChange={(e) => handleTranslationChange(e.target.value)}
                   onBlur={() => persistLines(lines)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      persistLines(lines);
+                      setLineIndex((i) => Math.min(lines.length - 1, i + 1));
+                    }
+                  }}
                   placeholder="このフレーズを日本語に訳してみましょう..."
                   rows={1}
                   className="resize-none text-[14px]"
                   style={{ background: "var(--color-surface)" }}
                 />
+                {lineIndex === lines.length - 1 && allTranslated && (
+                  <div className="mt-3.5 flex items-center justify-between gap-3">
+                    <span className="text-[12px] font-semibold" style={{ color: "var(--color-primary)" }}>
+                      All {lines.length} lines translated 🎉
+                    </span>
+                    <Button
+                      size="sm"
+                      disabled={startingReview || backfilling}
+                      onClick={handleStartReview}
+                    >
+                      {startingReview ? "Preparing review..." : "Start review →"}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>

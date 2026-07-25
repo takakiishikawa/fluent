@@ -228,18 +228,9 @@ export async function createSong(input: {
     return { error: "Paste the song's lyrics" };
   }
 
-  // 追加時にAIで全行分の公式和訳・語彙解説・文法解説をまとめて生成しDBに保存しておく
-  // （レビューページでは保存済みのデータを読むだけにする）
-  try {
-    const analysis = await analyzeSongLines(lines.map((l) => l.text));
-    lines.forEach((l, i) => {
-      l.hint = analysis[i]?.translation ?? "";
-      l.vocabNotes = analysis[i]?.vocabNotes ?? "";
-      l.grammarNotes = analysis[i]?.grammarNotes ?? "";
-    });
-  } catch (err) {
-    console.error("[createSong] analysis failed:", err);
-  }
+  // 公式和訳・語彙解説・文法解説の生成は曲数が多いと数十秒かかることがあるため、
+  // 追加処理自体をブロックしない。songページ側の自動バックフィル（missing hint検知）
+  // が開いた瞬間にバックグラウンドで生成してくれるので、ここでは空のまま保存する
 
   // タイトル未入力（oEmbed取得に失敗した等）ならサーバー側でも一度フォールバック取得を試みる
   let title = input.title.trim();
