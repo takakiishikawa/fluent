@@ -14,7 +14,6 @@ import {
 import {
   Plus,
   ListVideo,
-  ExternalLink,
   Check,
   Lock,
   Trash2,
@@ -162,6 +161,30 @@ export default function ShadowingPage() {
     toast.success(`Round ${nextLap} done!`);
     setVideos((prev) =>
       prev.map((v) => (v.id === videoId ? { ...v, lapCount: nextLap } : v)),
+    );
+  };
+
+  // チェック済みの動画をクリックしたら、そのラウンドの完了記録を取り消す(チェックを外す)
+  const handleUnmarkDone = async (videoId: string, lapCount: number) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("youtube_logs")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("video_id", videoId)
+      .eq("lap", lapCount);
+
+    if (error) {
+      toast.error("Failed to update");
+      return;
+    }
+
+    setVideos((prev) =>
+      prev.map((v) => (v.id === videoId ? { ...v, lapCount: lapCount - 1 } : v)),
     );
   };
 
@@ -491,6 +514,7 @@ export default function ShadowingPage() {
                           video={video}
                           round={round}
                           onMarkDone={handleMarkDone}
+                          onUnmarkDone={handleUnmarkDone}
                           onDelete={handleDeleteVideo}
                         />
                       ))}
@@ -511,6 +535,7 @@ export default function ShadowingPage() {
                   video={video}
                   round={round}
                   onMarkDone={handleMarkDone}
+                  onUnmarkDone={handleUnmarkDone}
                   onDelete={handleDeleteVideo}
                 />
               ))}
@@ -704,31 +729,36 @@ function VideoRow({
   video,
   round,
   onMarkDone,
+  onUnmarkDone,
   onDelete,
 }: {
   position: number;
   video: VideoWithLap;
   round: Round;
   onMarkDone: (id: string, currentLap: number) => Promise<void>;
+  onUnmarkDone: (id: string, currentLap: number) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
-  const [marking, setMarking] = useState(false);
+  const [pending, setPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const isDoneThisRound = video.lapCount >= round;
   const canMark = video.lapCount === round - 1;
+  const canToggleOff = video.lapCount === round;
   const locked = !isDoneThisRound && !canMark;
+  const clickable = (canMark || canToggleOff) && !pending;
 
-  const handleComplete = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!canMark) return;
-    setMarking(true);
-    await onMarkDone(video.id, video.lapCount);
-    setMarking(false);
+  const handleToggle = async () => {
+    if (!clickable) return;
+    setPending(true);
+    if (canMark) {
+      await onMarkDone(video.id, video.lapCount);
+    } else if (canToggleOff) {
+      await onUnmarkDone(video.id, video.lapCount);
+    }
+    setPending(false);
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault();
     e.stopPropagation();
     setDeleting(true);
     await onDelete(video.id);
@@ -736,11 +766,23 @@ function VideoRow({
   };
 
   return (
-    <a
-      href={video.video_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex items-center gap-3.5 py-3"
+    <div
+      role="button"
+      tabIndex={clickable ? 0 : -1}
+      onClick={handleToggle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleToggle();
+        }
+      }}
+      title={locked ? "Finish the previous round first" : undefined}
+      className={cn(
+        "group -mx-2 flex items-center gap-3.5 rounded-[12px] px-2 py-3 transition-colors",
+        clickable
+          ? "cursor-pointer hover:bg-[var(--color-surface-subtle)] active:bg-[var(--color-primary-soft)]"
+          : "cursor-default",
+      )}
       style={{ borderTop: "1px solid var(--color-border-default)" }}
     >
       <span className="w-5 shrink-0 text-center text-[13px] font-semibold text-muted-foreground">
@@ -755,7 +797,7 @@ function VideoRow({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <ExternalLink className="h-5 w-5 text-muted-foreground/30" />
+            <ListVideo className="h-5 w-5 text-muted-foreground/30" />
           </div>
         )}
         {video.duration && (
@@ -774,11 +816,8 @@ function VideoRow({
           {video.title}
         </p>
       </div>
-      <button
-        onClick={handleComplete}
-        disabled={marking || locked}
-        title={locked ? "Finish the previous round first" : undefined}
-        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-default"
+      <span
+        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full transition-colors"
         style={{
           border: `2px solid ${isDoneThisRound ? "var(--color-primary)" : "var(--color-border-default)"}`,
           background: isDoneThisRound
@@ -794,7 +833,7 @@ function VideoRow({
         ) : locked ? (
           <Lock className="h-3 w-3" />
         ) : null}
-      </button>
+      </span>
       <Button
         onClick={handleDelete}
         disabled={deleting}
@@ -805,7 +844,7 @@ function VideoRow({
       >
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
-    </a>
+    </div>
   );
 }
 
