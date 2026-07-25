@@ -314,28 +314,30 @@ export default function SongsPage() {
                 className="mt-[18px] flex flex-col rounded-[16px] p-5"
                 style={{ background: "var(--color-surface-subtle)" }}
               >
-                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
-                      {lineIndex + 1}/{lines.length}
-                    </span>
-                    <p className="text-[20px] font-bold leading-snug text-foreground">
-                      {currentLine.text}
-                    </p>
-                    {showHint && (
-                      <p className="text-[13px] italic text-muted-foreground">
-                        {hintLoading
-                          ? "Translating…"
-                          : hint?.text === currentLine.text
-                            ? `— ${hint.translation}`
-                            : ""}
+                <div className="mb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
+                        {lineIndex + 1}/{lines.length}
+                      </span>
+                      <p className="text-[20px] font-bold leading-snug text-foreground">
+                        {currentLine.text}
                       </p>
-                    )}
+                    </div>
+                    <label className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                      JA
+                      <Switch checked={showHint} onCheckedChange={setShowHint} />
+                    </label>
                   </div>
-                  <label className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                    JA
-                    <Switch checked={showHint} onCheckedChange={setShowHint} />
-                  </label>
+                  {showHint && (
+                    <p className="mt-1.5 text-[13px] italic text-muted-foreground">
+                      {hintLoading
+                        ? "Translating…"
+                        : hint?.text === currentLine.text
+                          ? `— ${hint.translation}`
+                          : ""}
+                    </p>
+                  )}
                 </div>
                 <Textarea
                   value={currentLine.translation}
