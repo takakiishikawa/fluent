@@ -127,6 +127,7 @@ export interface OutputTopic {
 export interface SongLine {
   text: string;
   translation: string;
+  hint: string;
 }
 
 export interface Song {

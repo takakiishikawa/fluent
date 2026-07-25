@@ -98,52 +98,9 @@ export default function SongsPage() {
     );
   }
 
-  // Google翻訳による参考訳（ヒント）。自分で和訳するときの補助として表示するだけで、
-  // translation欄には自動で入れない
+  // 参考訳（ヒント）。曲を追加した時点でAIが全行分をDBに保存済みなので、
+  // ここでは表示するだけ（オンデマンドの翻訳API呼び出しはしない）
   const [showHint, setShowHint] = useState(false);
-  const [hintLoading, setHintLoading] = useState(false);
-  const [hint, setHint] = useState<{ text: string; translation: string } | null>(null);
-  const hintCache = useRef(new Map<string, string>());
-
-  useEffect(() => {
-    if (!showHint || !currentLine) return;
-    const key = currentLine.text;
-    const cached = hintCache.current.get(key);
-    if (cached) {
-      setHint({ text: key, translation: cached });
-      return;
-    }
-    let cancelled = false;
-    setHintLoading(true);
-    fetch("/api/translate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ texts: [key] }),
-    })
-      .then(async (r) => {
-        const d = await r.json();
-        if (!r.ok) throw new Error(d?.error || `翻訳API エラー (${r.status})`);
-        return d as { translations?: string[] };
-      })
-      .then((d) => {
-        if (cancelled) return;
-        const t = d.translations?.[0];
-        if (t) {
-          hintCache.current.set(key, t);
-          setHint({ text: key, translation: t });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) toast.error("Failed to fetch translation hint");
-      })
-      .finally(() => {
-        if (!cancelled) setHintLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showHint, currentLine?.text]);
 
   async function persistLines(next: SongLine[]) {
     if (!active) return;
@@ -329,13 +286,9 @@ export default function SongsPage() {
                       <Switch checked={showHint} onCheckedChange={setShowHint} />
                     </label>
                   </div>
-                  {showHint && (
+                  {showHint && currentLine.hint && (
                     <p className="mt-1.5 text-[13px] italic text-muted-foreground">
-                      {hintLoading
-                        ? "Translating…"
-                        : hint?.text === currentLine.text
-                          ? `— ${hint.translation}`
-                          : ""}
+                      — {currentLine.hint}
                     </p>
                   )}
                 </div>
