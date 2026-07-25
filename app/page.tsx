@@ -168,7 +168,7 @@ export default async function HomePage() {
     supabase.from("user_settings").select("*").maybeSingle(),
     supabase
       .from("output_topics")
-      .select("responses, updated_at")
+      .select("responses, response_statuses, updated_at")
       .eq("language", currentLanguage),
     isVi
       ? Promise.resolve({ count: 0 })
@@ -273,6 +273,19 @@ export default async function HomePage() {
         sum + t.responses.filter((r: string) => r.trim().length > 0).length,
       0,
     );
+
+  const outputNeedsReviewCount = outputTopics.filter((t) =>
+    t.responses.some(
+      (r: string, i: number) =>
+        r.trim().length > 0 && (t.response_statuses?.[i] ?? "draft") !== "revised",
+    ),
+  ).length;
+  const outputBannerMessage =
+    outputReadyCount === 0
+      ? "No responses ready yet — write one before Friday so you have something to say."
+      : outputNeedsReviewCount > 0
+        ? `${outputReadyCount} Output response${outputReadyCount === 1 ? "" : "s"} ready — ${outputNeedsReviewCount} still need${outputNeedsReviewCount === 1 ? "s" : ""} a review pass before you speak ${outputNeedsReviewCount === 1 ? "it" : "them"}.`
+        : `${outputReadyCount} Output response${outputReadyCount === 1 ? "" : "s"} polished and ready to speak from.`;
 
   // ── Songs（全行の和訳が完了した曲を1本としてカウント） ──
   const songs = (songsResult.data ?? []) as {
@@ -389,7 +402,7 @@ export default async function HomePage() {
       >
         <span className="leading-relaxed">
           <strong>Friday lesson in {daysUntilFriday} days.</strong>{" "}
-          You have {outputReadyCount} Output responses ready to speak from.
+          {outputBannerMessage}
         </span>
         <span
           className="shrink-0 font-semibold whitespace-nowrap"

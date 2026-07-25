@@ -354,6 +354,9 @@ export default function LibraryInputPage() {
       >
         Input
       </div>
+      <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
+        Make grammar second nature
+      </h1>
 
       <div
         className="mb-[22px] flex flex-wrap items-center gap-[22px]"
