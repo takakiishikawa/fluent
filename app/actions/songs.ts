@@ -9,6 +9,18 @@ import type { Song, SongLine } from "@/lib/types";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// 1回のAPI呼び出しに全行分をまとめて投げると、出力トークン量が多くなり
+// (55行 × 3項目 等) 生成に数十秒〜数分かかる。行をチャンクに分けて並列に
+// 呼び出すことで、体感速度を大きく改善する
+const CHUNK_SIZE = 12;
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 // ── 曲追加時: 公式和訳 + 語彙解説 + 文法解説をまとめて生成 ──
 
 type LineAnalysis = {
@@ -50,7 +62,7 @@ const SONG_ANALYZE_TOOL_SCHEMA = {
   required: ["lines"],
 };
 
-async function analyzeSongLines(texts: string[]): Promise<LineAnalysis[]> {
+async function analyzeSongLinesChunk(texts: string[]): Promise<LineAnalysis[]> {
   if (texts.length === 0) return [];
 
   const userMessage = `Lyrics lines (analyze each one):\n${texts
@@ -58,8 +70,8 @@ async function analyzeSongLines(texts: string[]): Promise<LineAnalysis[]> {
     .join("\n")}`;
 
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 16000,
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 4000,
     system: SONG_ANALYZE_SYSTEM_PROMPT,
     tools: [
       {
@@ -81,6 +93,13 @@ async function analyzeSongLines(texts: string[]): Promise<LineAnalysis[]> {
   return texts.map(
     (_, i) => lines[i] ?? { translation: "", vocabNotes: "", grammarNotes: "" },
   );
+}
+
+async function analyzeSongLines(texts: string[]): Promise<LineAnalysis[]> {
+  if (texts.length === 0) return [];
+  const chunks = chunk(texts, CHUNK_SIZE);
+  const results = await Promise.all(chunks.map((c) => analyzeSongLinesChunk(c)));
+  return results.flat();
 }
 
 // ── レビュー時: 自分の訳と公式訳の違いについてのコメントを生成 ──
@@ -109,7 +128,7 @@ const DIFF_TOOL_SCHEMA = {
   required: ["comments"],
 };
 
-async function compareTranslations(
+async function compareTranslationsChunk(
   items: { text: string; own: string; reference: string }[],
 ): Promise<string[]> {
   if (items.length === 0) return [];
@@ -122,8 +141,8 @@ async function compareTranslations(
     .join("\n\n");
 
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 8192,
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 3000,
     system: DIFF_SYSTEM_PROMPT,
     tools: [
       {
@@ -142,6 +161,15 @@ async function compareTranslations(
   }
   const { comments } = toolUse.input as { comments: string[] };
   return items.map((_, i) => comments[i] ?? "");
+}
+
+async function compareTranslations(
+  items: { text: string; own: string; reference: string }[],
+): Promise<string[]> {
+  if (items.length === 0) return [];
+  const chunks = chunk(items, CHUNK_SIZE);
+  const results = await Promise.all(chunks.map((c) => compareTranslationsChunk(c)));
+  return results.flat();
 }
 
 export async function listSongs(): Promise<Song[]> {
@@ -307,9 +335,21 @@ export async function backfillSongAnalysis(
     return { error: "Analysis failed" };
   }
 
-  const nextLines = lines.map((l, i) => {
+  // 生成中にユーザーが翻訳を編集したりOKにしたりしている可能性があるため、
+  // 書き込み直前に最新のlinesを取り直し、hint/vocab/grammarだけをマージする
+  // （古いスナップショットのまま丸ごと書き戻すと、その間の編集を消してしまう）
+  const { data: freshSong, error: freshError } = await supabase
+    .from("songs")
+    .select("lines")
+    .eq("id", id)
+    .single();
+  if (freshError || !freshSong) {
+    return { error: freshError?.message ?? "Song not found" };
+  }
+  const freshLines = (freshSong.lines as SongLine[]) ?? [];
+  const nextLines = freshLines.map((l, i) => {
     const j = missingIdxs.indexOf(i);
-    if (j === -1) return l;
+    if (j === -1 || l.hint?.trim()) return l;
     return {
       ...l,
       hint: analysis[j]?.translation ?? "",
@@ -368,9 +408,21 @@ export async function generateDiffComments(
     return { error: "Failed to generate comments" };
   }
 
-  const nextLines = lines.map((l, i) => {
+  // 生成中にユーザーがOKにしたり訳文を修正したりしている可能性があるため、
+  // 書き込み直前に最新のlinesを取り直し、diffCommentだけをマージする
+  const { data: freshSong, error: freshError } = await supabase
+    .from("songs")
+    .select("lines")
+    .eq("id", id)
+    .single();
+  if (freshError || !freshSong) {
+    return { error: freshError?.message ?? "Song not found" };
+  }
+  const freshLines = (freshSong.lines as SongLine[]) ?? [];
+  const nextLines = freshLines.map((l, i) => {
     const j = targetIdxs.indexOf(i);
-    return j === -1 ? l : { ...l, diffComment: comments[j] ?? "" };
+    if (j === -1 || l.diffComment?.trim()) return l;
+    return { ...l, diffComment: comments[j] ?? "" };
   });
 
   const { error } = await supabase

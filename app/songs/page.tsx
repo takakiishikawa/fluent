@@ -134,8 +134,19 @@ export default function SongsPage() {
     backfillSongAnalysis(active.id)
       .then(({ lines: filled }) => {
         if (cancelled || !filled) return;
+        // hint/vocab/grammarだけを反映し、その間にユーザーが編集した
+        // translation/reviewed/diffCommentは現在のクライアント側の値を保つ
         setSongs((prev) =>
-          prev.map((s) => (s.id === active.id ? { ...s, lines: filled } : s)),
+          prev.map((s) => {
+            if (s.id !== active.id) return s;
+            const merged = s.lines.map((l, i) => ({
+              ...l,
+              hint: filled[i]?.hint ?? l.hint,
+              vocabNotes: filled[i]?.vocabNotes ?? l.vocabNotes,
+              grammarNotes: filled[i]?.grammarNotes ?? l.grammarNotes,
+            }));
+            return { ...s, lines: merged };
+          }),
         );
       })
       .finally(() => {
@@ -167,22 +178,50 @@ export default function SongsPage() {
     persistLines(next);
   }
 
-  async function handleStartReview() {
+  function handleStartReview() {
     if (!active || !allTranslated) return;
-    setStartingReview(true);
-    const { error, lines: updated } = await generateDiffComments(active.id);
-    setStartingReview(false);
-    if (error) {
-      toast.error("Failed to prepare review");
-      return;
-    }
-    if (updated) {
-      setSongs((prev) =>
-        prev.map((s) => (s.id === active.id ? { ...s, lines: updated } : s)),
-      );
-    }
     setMode("review");
   }
+
+  const [generatingComments, setGeneratingComments] = useState(false);
+
+  // レビュー画面に入ったら、まだ「違いのコメント」がない行だけをバックグラウンドで
+  // 生成する（画面遷移自体は待たせない）
+  useEffect(() => {
+    if (mode !== "review" || !active) return;
+    const hasMissingComment = active.lines.some(
+      (l) => l.translation.trim() && l.hint.trim() && !l.diffComment?.trim(),
+    );
+    if (!hasMissingComment) return;
+    let cancelled = false;
+    setGeneratingComments(true);
+    generateDiffComments(active.id)
+      .then(({ lines: updated }) => {
+        if (cancelled || !updated) return;
+        // diffCommentだけを反映し、生成中にユーザーがOKにしたり訳文を
+        // 修正したりした内容(reviewed/translation)は上書きしない
+        setSongs((prev) =>
+          prev.map((s) => {
+            if (s.id !== active.id) return s;
+            const merged = s.lines.map((l, i) => ({
+              ...l,
+              diffComment: l.diffComment?.trim() ? l.diffComment : updated[i]?.diffComment ?? l.diffComment,
+            }));
+            return { ...s, lines: merged };
+          }),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Failed to generate comments");
+      })
+      .finally(() => {
+        if (!cancelled) setGeneratingComments(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, active?.id]);
 
   async function handleCreate() {
     if (!newVideoUrl.trim() || !newLyrics.trim()) return;
@@ -327,6 +366,14 @@ export default function SongsPage() {
               {lines.filter((l) => l.reviewed).length}/{lines.length} lines OK
             </span>
           </div>
+
+          {generatingComments && (
+            <p className="mb-4 px-1 text-[11.5px] text-muted-foreground">
+              ✨ Generating comments comparing your translations with the
+              official ones — they'll pop in below as they're ready. Feel
+              free to start marking lines OK in the meantime.
+            </p>
+          )}
 
           {allReviewed && (
             <div
