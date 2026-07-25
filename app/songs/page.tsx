@@ -34,6 +34,7 @@ import {
   createSong,
   updateSongLines,
   fetchYoutubeMeta,
+  backfillSongHints,
 } from "@/app/actions/songs";
 import { extractYoutubeVideoId } from "@/lib/youtube";
 import type { Song, SongLine } from "@/lib/types";
@@ -101,6 +102,30 @@ export default function SongsPage() {
   // 参考訳（ヒント）。曲を追加した時点でAIが全行分をDBに保存済みなので、
   // ここでは表示するだけ（オンデマンドの翻訳API呼び出しはしない）
   const [showHint, setShowHint] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
+
+  // 追加当時に翻訳が未実装/一部失敗して hint が空のまま残っている曲を後から埋める
+  useEffect(() => {
+    if (!active) return;
+    const hasMissingHint = active.lines.some((l) => !l.hint?.trim());
+    if (!hasMissingHint) return;
+    let cancelled = false;
+    setBackfilling(true);
+    backfillSongHints(active.id)
+      .then(({ lines: filled }) => {
+        if (cancelled || !filled) return;
+        setSongs((prev) =>
+          prev.map((s) => (s.id === active.id ? { ...s, lines: filled } : s)),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setBackfilling(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.id]);
 
   async function persistLines(next: SongLine[]) {
     if (!active) return;
@@ -286,9 +311,9 @@ export default function SongsPage() {
                       <Switch checked={showHint} onCheckedChange={setShowHint} />
                     </label>
                   </div>
-                  {showHint && currentLine.hint && (
+                  {showHint && (currentLine.hint || backfilling) && (
                     <p className="mt-1.5 text-[13px] italic text-muted-foreground">
-                      — {currentLine.hint}
+                      {currentLine.hint ? `— ${currentLine.hint}` : "Translating…"}
                     </p>
                   )}
                 </div>

@@ -40,7 +40,7 @@ async function translateLinesToJapanese(texts: string[]): Promise<string[]> {
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 4000,
+    max_tokens: 8192,
     system: SONG_TRANSLATE_SYSTEM_PROMPT,
     tools: [
       {
@@ -192,6 +192,51 @@ export async function updateSongLines(
   if (error) return { error: error.message };
   revalidatePath("/songs");
   return {};
+}
+
+// hint(AI参考訳)が空のまま残っている曲を後から埋める。
+// 追加時の翻訳が未実装だった頃の曲や、生成が一部失敗した曲を復旧するためのもの
+export async function backfillSongHints(
+  id: string,
+): Promise<{ error?: string; lines?: SongLine[] }> {
+  const supabase = await createClient();
+  const { data: song, error: fetchError } = await supabase
+    .from("songs")
+    .select("lines")
+    .eq("id", id)
+    .single();
+  if (fetchError || !song) {
+    return { error: fetchError?.message ?? "Song not found" };
+  }
+
+  const lines = (song.lines as SongLine[]) ?? [];
+  const missingIdxs = lines
+    .map((_, i) => i)
+    .filter((i) => !lines[i].hint?.trim());
+  if (missingIdxs.length === 0) return { lines };
+
+  let translations: string[];
+  try {
+    translations = await translateLinesToJapanese(
+      missingIdxs.map((i) => lines[i].text),
+    );
+  } catch (err) {
+    console.error("[backfillSongHints] translation failed:", err);
+    return { error: "Translation failed" };
+  }
+
+  const nextLines = lines.map((l, i) => {
+    const j = missingIdxs.indexOf(i);
+    return j === -1 ? l : { ...l, hint: translations[j] ?? "" };
+  });
+
+  const { error } = await supabase
+    .from("songs")
+    .update({ lines: nextLines })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/songs");
+  return { lines: nextLines };
 }
 
 export async function deleteSong(id: string): Promise<{ error?: string }> {
