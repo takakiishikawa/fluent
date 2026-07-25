@@ -75,12 +75,32 @@ function StatusDot({ status }: { status: OutputResponseStatus }) {
   );
 }
 
-const READ_ALOUD_GOAL = 10;
+const READ_ALOUD_GOAL = 5;
 
 // responses[i] に対応する音読回数。未設定分は 0 扱い
 function readCountsFor(topic: OutputTopic): number[] {
   const versions = topic.responses?.length ? topic.responses : [""];
   return versions.map((_, i) => topic.read_aloud_counts?.[i] ?? 0);
+}
+
+// トピック一覧用: 書かれているバージョン全体の音読進捗をまとめて1つの表示にする
+function readAloudSummary(
+  topic: OutputTopic,
+): { label: string; done: boolean } | null {
+  const versionTexts = topic.responses?.length ? topic.responses : [topic.response];
+  const counts = readCountsFor(topic);
+  const writtenIdxs = versionTexts
+    .map((_, i) => i)
+    .filter((i) => (versionTexts[i] ?? "").trim().length > 0);
+  if (writtenIdxs.length === 0) return null;
+
+  const goal = writtenIdxs.length * READ_ALOUD_GOAL;
+  const total = writtenIdxs.reduce(
+    (sum, i) => sum + Math.min(counts[i] ?? 0, READ_ALOUD_GOAL),
+    0,
+  );
+  const done = total >= goal;
+  return { label: done ? "Read aloud done" : `Read aloud ${total}/${goal}`, done };
 }
 
 function ReadAloudButton({
@@ -95,7 +115,7 @@ function ReadAloudButton({
     <button
       onClick={onIncrement}
       disabled={done}
-      title={done ? "音読10回、完了！" : "音読したらタップ"}
+      title={done ? `音読${READ_ALOUD_GOAL}回、完了！` : "音読したらタップ"}
       className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors disabled:cursor-default"
       style={{
         background: done ? "var(--color-success-subtle)" : "var(--color-surface-subtle)",
@@ -316,6 +336,7 @@ export default function OutputPage() {
             const needsReview = statusesFor(t).some(
               (s, i) => s === "draft" && (versionTexts[i] ?? "").trim().length > 0,
             );
+            const readAloud = readAloudSummary(t);
             const isActive = t.id === activeId;
             return (
               <button
@@ -334,13 +355,26 @@ export default function OutputPage() {
                 </p>
                 <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                   {written && <StatusDot status={needsReview ? "draft" : "revised"} />}
-                  {written ? "Written" : "Not started"} · {formatDate(t.created_at)}
+                  {written ? "Written" : "Not started"} · {formatDate(t.updated_at)}
                   {needsReview && (
                     <span className="font-semibold" style={{ color: "var(--color-warning)" }}>
                       · Needs review
                     </span>
                   )}
                 </div>
+                {readAloud && (
+                  <div
+                    className="mt-1 flex items-center gap-1 text-[11.5px] font-semibold"
+                    style={{ color: readAloud.done ? "var(--color-success)" : "var(--color-text-secondary)" }}
+                  >
+                    {readAloud.done ? (
+                      <Check className="h-3 w-3" />
+                    ) : (
+                      <Mic className="h-3 w-3" />
+                    )}
+                    {readAloud.label}
+                  </div>
+                )}
               </button>
             );
           })}
@@ -363,7 +397,7 @@ export default function OutputPage() {
             }}
           >
             <p className="mb-1.5 text-[12.5px] text-muted-foreground">
-              {formatDate(active.created_at)}
+              {formatDate(active.updated_at)}
             </p>
             <InlineEdit
               value={active.title}
