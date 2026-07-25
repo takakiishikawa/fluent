@@ -97,7 +97,6 @@ export default async function ReportPage() {
         outputTopics={outputTopics}
         inputRounds={inputRounds}
         songs={songs}
-        showWord={!isEn}
         showInputAndSongs={isEn}
         shadowingLabel={isEn ? "Ryan" : "Shadowing"}
       />

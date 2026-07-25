@@ -62,27 +62,18 @@ function fmtMonth(ym: string): string {
 
 type ChartRow = Record<string, string | number>;
 
-/** Repeating, aggregated by month */
+/** Repeating, aggregated by month (grammar + expression + word combined) */
 function buildMonthlyRepeating(logs: PracticeLog[]): ChartRow[] {
-  const map = new Map<
-    string,
-    { grammar: number; expression: number; word: number }
-  >();
+  const map = new Map<string, number>();
   for (const l of logs) {
     const ym = l.practiced_at.slice(0, 7);
-    const e = map.get(ym) ?? { grammar: 0, expression: 0, word: 0 };
-    map.set(ym, {
-      grammar: e.grammar + l.grammar_done_count,
-      expression: e.expression + l.expression_done_count,
-      word: e.word + l.word_done_count,
-    });
+    const total =
+      l.grammar_done_count + l.expression_done_count + l.word_done_count;
+    map.set(ym, (map.get(ym) ?? 0) + total);
   }
-  return [...map.keys()].sort().map((ym) => ({
-    label: fmtMonth(ym),
-    grammar: map.get(ym)?.grammar ?? 0,
-    expression: map.get(ym)?.expression ?? 0,
-    word: map.get(ym)?.word ?? 0,
-  }));
+  return [...map.keys()]
+    .sort()
+    .map((ym) => ({ label: fmtMonth(ym), total: map.get(ym) ?? 0 }));
 }
 
 /** Shadowing (YouTube watch time), aggregated by month */
@@ -139,9 +130,7 @@ function buildMonthlySongs(songs: SongEntry[]): ChartRow[] {
 }
 
 const repeatingConfig: ChartConfig = {
-  grammar: { label: "Grammar", color: "var(--color-primary)" },
-  expression: { label: "Phrases", color: "var(--color-primary-chart-2)" },
-  word: { label: "Words", color: "var(--color-primary-chart-3)" },
+  total: { label: "Reps", color: "var(--color-primary)" },
 };
 const shadowingConfig: ChartConfig = {
   minutes: { label: "Minutes", color: "var(--color-primary)" },
@@ -162,7 +151,6 @@ export function ReportCharts({
   outputTopics,
   inputRounds,
   songs,
-  showWord = true,
   showInputAndSongs = true,
   shadowingLabel = "Ryan",
 }: {
@@ -171,7 +159,6 @@ export function ReportCharts({
   outputTopics: OutputTopic[];
   inputRounds: InputRound[];
   songs: SongEntry[];
-  showWord?: boolean;
   showInputAndSongs?: boolean;
   shadowingLabel?: string;
 }) {
@@ -190,24 +177,13 @@ export function ReportCharts({
   );
   const songsData = useMemo(() => buildMonthlySongs(songs), [songs]);
 
-  // VI mode only: include the "word" series in Repeating
-  const repeatingYKeys = showWord
-    ? ["grammar", "expression", "word"]
-    : ["grammar", "expression"];
-  const repeatingChartConfig: ChartConfig = showWord
-    ? repeatingConfig
-    : {
-        grammar: repeatingConfig.grammar,
-        expression: repeatingConfig.expression,
-      };
-
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
       <ReportAreaChart
         data={repeatingData as Record<string, unknown>[]}
-        config={repeatingChartConfig}
+        config={repeatingConfig}
         xKey="label"
-        yKeys={repeatingYKeys}
+        yKeys={["total"]}
         title="Repeating"
         unit="reps"
         height={170}
