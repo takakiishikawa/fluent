@@ -17,6 +17,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
   toast,
 } from "@takaki/go-design-system";
 import {
@@ -28,6 +32,8 @@ import {
   Pause,
   ChevronLeft,
   ChevronRight,
+  MoreVertical,
+  Trash2,
 } from "lucide-react";
 import {
   listSongs,
@@ -35,6 +41,7 @@ import {
   updateSongLines,
   fetchYoutubeMeta,
   backfillSongHints,
+  deleteSong,
 } from "@/app/actions/songs";
 import { extractYoutubeVideoId } from "@/lib/youtube";
 import type { Song, SongLine } from "@/lib/types";
@@ -163,6 +170,19 @@ export default function SongsPage() {
     fetchedForVideoId.current = null;
   }
 
+  async function handleDeleteSong(id: string) {
+    if (!confirm("Delete this song? This can't be undone.")) return;
+    const { error } = await deleteSong(id);
+    if (error) {
+      toast.error("Failed to delete song");
+      return;
+    }
+    const next = songs.filter((s) => s.id !== id);
+    setSongs(next);
+    if (activeId === id) setActiveId(next[0]?.id ?? null);
+    toast.success("Song deleted");
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -210,6 +230,24 @@ export default function SongsPage() {
           >
             <Plus className="h-4 w-4" />
           </Button>
+          {active && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" title="More options">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => handleDeleteSong(active.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                  Delete this song
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
