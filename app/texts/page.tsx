@@ -790,6 +790,7 @@ function LessonList({
       data={rows}
       pageSize={20}
       emptyMessage="レッスンデータがありません"
+      maxBodyHeight="70vh"
     />
   );
 }
@@ -878,6 +879,7 @@ function FlatTextList({
           data={grammars}
           pageSize={20}
           emptyMessage="文法が登録されていません。テキスト追加から登録してください。"
+          maxBodyHeight="70vh"
         />
       </TabsContent>
       <TabsContent value="phrase" className="mt-4">
@@ -886,6 +888,7 @@ function FlatTextList({
           data={expressions}
           pageSize={20}
           emptyMessage="フレーズが登録されていません。テキスト追加から登録してください。"
+          maxBodyHeight="70vh"
         />
       </TabsContent>
     </Tabs>

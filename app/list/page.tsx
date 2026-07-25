@@ -298,6 +298,7 @@ export function GrammarTab({
         pageSize={100}
         pageSizeOptions={[100]}
         emptyMessage="文法が登録されていません"
+        maxBodyHeight="70vh"
       />
     </div>
   );
@@ -492,6 +493,7 @@ export function PhraseTab({
         pageSize={100}
         pageSizeOptions={[100]}
         emptyMessage="フレーズが登録されていません"
+        maxBodyHeight="70vh"
       />
     </div>
   );
@@ -665,6 +667,7 @@ function WordTab({
         pageSize={100}
         pageSizeOptions={[100]}
         emptyMessage="単語が登録されていません"
+        maxBodyHeight="70vh"
       />
     </div>
   );
