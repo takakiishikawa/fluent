@@ -342,18 +342,18 @@ export default function OutputPage() {
               <button
                 key={t.id}
                 onClick={() => setActiveId(t.id)}
-                className="mb-0.5 w-full rounded-[12px] px-4 py-3.5 text-left transition-colors"
+                className="mb-0.5 w-full rounded-[12px] px-4 py-2.5 text-left transition-colors"
                 style={{
                   background: isActive ? "var(--color-primary-soft)" : "transparent",
                 }}
               >
                 <p
-                  className="mb-1 text-[14px] font-semibold leading-snug"
+                  className="mb-1 truncate text-[14px] font-semibold leading-snug"
                   style={{ color: isActive ? "var(--color-primary)" : "var(--color-text-primary)" }}
                 >
                   {t.title}
                 </p>
-                <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                <div className="flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-[12px] text-muted-foreground">
                   {written && <StatusDot status={needsReview ? "draft" : "revised"} />}
                   {written ? "Written" : "Not started"} · {formatDate(t.updated_at)}
                   {needsReview && (
@@ -361,20 +361,21 @@ export default function OutputPage() {
                       · Needs review
                     </span>
                   )}
+                  {readAloud && (
+                    <span
+                      className="flex items-center gap-1 font-semibold"
+                      style={{ color: readAloud.done ? "var(--color-success)" : "var(--color-text-secondary)" }}
+                    >
+                      ·
+                      {readAloud.done ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <Mic className="h-3 w-3" />
+                      )}
+                      {readAloud.label}
+                    </span>
+                  )}
                 </div>
-                {readAloud && (
-                  <div
-                    className="mt-1 flex items-center gap-1 text-[11.5px] font-semibold"
-                    style={{ color: readAloud.done ? "var(--color-success)" : "var(--color-text-secondary)" }}
-                  >
-                    {readAloud.done ? (
-                      <Check className="h-3 w-3" />
-                    ) : (
-                      <Mic className="h-3 w-3" />
-                    )}
-                    {readAloud.label}
-                  </div>
-                )}
               </button>
             );
           })}
