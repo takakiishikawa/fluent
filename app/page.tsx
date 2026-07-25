@@ -119,8 +119,20 @@ export default async function HomePage() {
 
   const heatmapStart = addDays(todayUTC, -weekday - 77);
   const heatmapStartStr = toStr(heatmapStart);
-  const rangeStartStr = toStr(addDays(todayUTC, -6));
-  const weekAgoISO = addDays(now, -7).toISOString();
+
+  // ── 週サイクル: 金曜日（レッスン日）〜木曜日を1サイクルとする ──
+  const daysSinceFriday = (weekday - 5 + 7) % 7; // 0 = 今日が金曜日（サイクル開始日）
+  const cycleStartDate = addDays(todayUTC, -daysSinceFriday);
+  const cycleEndDate = addDays(cycleStartDate, 6);
+  const rangeStartStr = toStr(cycleStartDate);
+  const weekAgoISO = cycleStartDate.toISOString();
+  const fmtCycleDate = (d: Date) =>
+    new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }).format(d);
+  const cycleRangeLabel = `${fmtCycleDate(cycleStartDate)} – ${fmtCycleDate(cycleEndDate)}`;
 
   const [
     allDatesResult,
@@ -259,8 +271,7 @@ export default async function HomePage() {
     );
 
   // ── 次の金曜日までの日数 ──
-  const dow = now.getDay(); // 0=Sun..6=Sat
-  const daysUntilFriday = (5 - dow + 7) % 7 || 7;
+  const daysUntilFriday = 7 - daysSinceFriday;
 
   // ── This week's plan（設定した週間目標に対する達成判定） ──
   const baselineRepeating = settings?.baseline_repeating ?? 500;
@@ -369,8 +380,13 @@ export default async function HomePage() {
         }}
       >
         <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 px-0.5">
-          <div className="text-[14px] font-bold text-foreground">
-            This week&apos;s plan
+          <div>
+            <div className="text-[14px] font-bold text-foreground">
+              This week&apos;s plan
+            </div>
+            <div className="text-[11.5px] text-muted-foreground">
+              {cycleRangeLabel} (Fri–Thu)
+            </div>
           </div>
           {allPlanDone && (
             <div
