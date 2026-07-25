@@ -101,7 +101,7 @@ function readAloudSummary(
     0,
   );
   const done = total >= goal;
-  return { label: done ? "Read aloud done" : `Read aloud ${total}/${goal}`, done };
+  return { label: `${total}/${goal}`, done };
 }
 
 function ReadAloudButton({
@@ -343,12 +343,7 @@ export default function OutputPage() {
                 </p>
                 <div className="flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-[12px] text-muted-foreground">
                   {written && <StatusDot status={needsReview ? "draft" : "revised"} />}
-                  {written ? "Written" : "Not started"} · {formatDate(t.updated_at)}
-                  {needsReview && (
-                    <span className="font-semibold" style={{ color: "var(--color-warning)" }}>
-                      · Needs review
-                    </span>
-                  )}
+                  {written ? (needsReview ? "Draft" : "Revised") : "Not started"} · {formatDate(t.updated_at)}
                   {readAloud && (
                     <span
                       className="flex items-center gap-1 font-semibold"
@@ -402,10 +397,11 @@ export default function OutputPage() {
               value={response}
               onChange={(e) => setResponse(e.target.value)}
               placeholder="Write your response in your own words..."
-              // flex-1（flex-basis:0 + grow）はflexレイアウトが毎フレーム高さを
-              // 再計算し直すため、textareaのネイティブresize(縦ドラッグ)と競合して
-              // ドラッグしても伸びなくなる。flex-1は外し、min-hだけで初期の高さを確保する
-              className="min-h-[420px] w-full resize-y text-[18px] leading-relaxed"
+              // flex-1(flex-basis:0)だとflexが毎回0基準で高さを再計算し直すため、
+              // textareaのネイティブresize(縦ドラッグ)と競合してドラッグしても伸びない。
+              // flex-basis:autoのflex-auto(=flex-1 1 auto)なら、リサイズ後の高さ自体が
+              // 次のbasisとして扱われるため、初期表示で余白を埋めつつresizeも機能する
+              className="min-h-[420px] w-full flex-auto resize-y text-[18px] leading-relaxed"
               style={{ background: "var(--color-background)" }}
             />
             <div className="mt-3.5 flex shrink-0 items-center justify-between">

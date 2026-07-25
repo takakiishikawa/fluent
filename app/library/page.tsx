@@ -355,7 +355,7 @@ export default function LibraryInputPage() {
         Input
       </div>
       <h1 className="mb-[22px] text-[30px] font-bold text-foreground">
-        Make grammar second nature
+        Write grammar into your own sentences
       </h1>
 
       <div

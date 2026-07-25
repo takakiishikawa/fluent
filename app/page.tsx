@@ -61,7 +61,7 @@ const MONTH_ABBR = [
 
 // ─── PlanRow ─────────────────────────────────────────────────────────────────
 
-export type PlanItem = {
+type PlanItem = {
   href: string;
   label: string;
   detail: string;
@@ -171,21 +171,21 @@ export default async function HomePage() {
       .select("responses, response_statuses, updated_at")
       .eq("language", currentLanguage),
     isVi
-      ? Promise.resolve({ count: 0 })
+      ? Promise.resolve({ data: [] })
       : (async () => {
           const [g, e] = await Promise.all([
             supabase
               .from("grammar")
-              .select("id", { count: "exact", head: true })
+              .select("rounds_updated_at")
               .eq("language", "en")
-              .gte("rounds_updated_at", weekAgoISO),
+              .gte("rounds_updated_at", heatmapStartStr),
             supabase
               .from("expressions")
-              .select("id", { count: "exact", head: true })
+              .select("rounds_updated_at")
               .eq("language", "en")
-              .gte("rounds_updated_at", weekAgoISO),
+              .gte("rounds_updated_at", heatmapStartStr),
           ]);
-          return { count: (g.count ?? 0) + (e.count ?? 0) };
+          return { data: [...(g.data ?? []), ...(e.data ?? [])] };
         })(),
     isVi
       ? Promise.resolve({ data: [] })
@@ -286,6 +286,14 @@ export default async function HomePage() {
       : outputNeedsReviewCount > 0
         ? `${outputReadyCount} Output response${outputReadyCount === 1 ? "" : "s"} ready — ${outputNeedsReviewCount} still need${outputNeedsReviewCount === 1 ? "s" : ""} a review pass before you speak ${outputNeedsReviewCount === 1 ? "it" : "them"}.`
         : `${outputReadyCount} Output response${outputReadyCount === 1 ? "" : "s"} polished and ready to speak from.`;
+  // 日別ヒートマップ用: その日更新されたトピックの「書けているバージョン数」を合算
+  const outputByDate = new Map<string, number>();
+  for (const t of outputTopics) {
+    const written = t.responses.filter((r: string) => r.trim().length > 0).length;
+    if (written === 0) continue;
+    const d = t.updated_at.slice(0, 10);
+    outputByDate.set(d, (outputByDate.get(d) ?? 0) + written);
+  }
 
   // ── Songs（全行の和訳が完了した曲を1本としてカウント） ──
   const songs = (songsResult.data ?? []) as {
@@ -298,6 +306,27 @@ export default async function HomePage() {
       s.lines.length > 0 &&
       s.lines.every((l) => l.translation.trim().length > 0),
   ).length;
+  const songsByDate = new Map<string, number>();
+  for (const s of songs) {
+    if (s.lines.length === 0 || !s.lines.every((l) => l.translation.trim().length > 0)) {
+      continue;
+    }
+    const d = s.updated_at.slice(0, 10);
+    songsByDate.set(d, (songsByDate.get(d) ?? 0) + 1);
+  }
+
+  // ── Input（grammar/expressions の rounds_updated_at を日別に集計） ──
+  const inputRows = (inputRoundsResult.data ?? []) as {
+    rounds_updated_at: string;
+  }[];
+  const weeklyInputRounds = inputRows.filter(
+    (r) => r.rounds_updated_at >= weekAgoISO,
+  ).length;
+  const inputByDate = new Map<string, number>();
+  for (const r of inputRows) {
+    const d = r.rounds_updated_at.slice(0, 10);
+    inputByDate.set(d, (inputByDate.get(d) ?? 0) + 1);
+  }
 
   // ── 次の金曜日までの日数 ──
   const daysUntilFriday = 7 - daysSinceFriday;
@@ -308,7 +337,6 @@ export default async function HomePage() {
   const baselineOutput = settings?.baseline_output ?? 2;
   const baselineInput = settings?.baseline_input ?? 1;
   const baselineSongs = settings?.baseline_songs ?? 2;
-  const weeklyInputRounds = inputRoundsResult.count ?? 0;
 
   const planItems: PlanItem[] = [
     {
@@ -364,6 +392,9 @@ export default async function HomePage() {
         date: cellStr,
         repeating: countByDate.get(cellStr) ?? 0,
         shadowing: shadowingByDate.get(cellStr) ?? 0,
+        output: outputByDate.get(cellStr) ?? 0,
+        input: inputByDate.get(cellStr) ?? 0,
+        songs: songsByDate.get(cellStr) ?? 0,
         future: cellStr > todayStr,
       });
     }
@@ -450,7 +481,6 @@ export default async function HomePage() {
         monthLabels={monthLabels}
         streak={streak}
         longest={longest}
-        planItems={planItems}
       />
     </div>
   );

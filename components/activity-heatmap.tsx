@@ -1,20 +1,17 @@
 "use client";
 
-import Link from "next/link";
-import { Check } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@takaki/go-design-system";
-import type { PlanItem } from "@/app/page";
 
 /**
  * 12週間（7行×12列＝84セル）のアクティビティヒートマップ。
  * アプリのプライマリ（青）に寄せた6段階グラデーション。
  * 列方向（grid-flow-col）に古い週→新しい週で並ぶ。
- * GitHub のように hover で日付と回数を tooltip 表示する。
+ * GitHub のように hover で日付と5アクション分の実績を tooltip 表示する。
  */
 
 // 0 = 練習なし、1-5 = 練習量（Fluent ヒートマップトークン 5段階）
@@ -33,6 +30,12 @@ export type HeatmapCell = {
   repeating: number;
   /** シャドーイング視聴分数 */
   shadowing: number;
+  /** Outputの書けているバージョン数（その日更新分） */
+  output: number;
+  /** Inputのラウンド完了数（その日分） */
+  input: number;
+  /** 全行の和訳が完了したSongs数（その日更新分） */
+  songs: number;
   future: boolean;
 };
 
@@ -58,69 +61,26 @@ export function ActivityHeatmap({
   monthLabels,
   streak,
   longest,
-  planItems,
 }: {
   cells: HeatmapCell[];
   monthLabels: string[];
   streak: number;
   longest: number;
-  planItems: PlanItem[];
 }) {
   return (
     <div
       className="rounded-[20px] border border-[var(--color-border-default)] bg-[var(--color-surface)] p-[20px_22px]"
     >
-      <TooltipProvider delayDuration={0}>
-        <div className="mb-3.5 flex items-baseline justify-between">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <h3 className="cursor-default text-[15px] font-semibold text-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-4">
-                12-week activity
-              </h3>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              align="start"
-              className="w-[260px] border-none bg-[#1f1d1a] p-3 text-white"
-            >
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-white/50">
-                This week&apos;s plan
-              </p>
-              <div className="space-y-2.5">
-                {planItems.map((item) => (
-                  <div key={item.href} className="flex items-center gap-2.5">
-                    <span
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-                      style={{
-                        border: `2px solid ${item.done ? "var(--color-primary)" : "rgba(255,255,255,0.3)"}`,
-                        background: item.done ? "var(--color-primary)" : "transparent",
-                      }}
-                    >
-                      {item.done && <Check className="h-3 w-3" strokeWidth={3} />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[12.5px] font-semibold">{item.label}</div>
-                      <div className="text-[11px] text-white/60">{item.detail}</div>
-                    </div>
-                    {!item.done && (
-                      <Link
-                        href={item.href}
-                        className="shrink-0 text-[11px] font-semibold"
-                        style={{ color: "var(--color-primary-chart-2)" }}
-                      >
-                        Start →
-                      </Link>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </TooltipContent>
-          </Tooltip>
-          <p className="text-[12.5px] text-muted-foreground">
-            {streak}-day streak · best {longest}
-          </p>
-        </div>
+      <div className="mb-3.5 flex items-baseline justify-between">
+        <h3 className="text-[15px] font-semibold text-foreground">
+          12-week activity
+        </h3>
+        <p className="text-[12.5px] text-muted-foreground">
+          {streak}-day streak · best {longest}
+        </p>
+      </div>
 
+      <TooltipProvider delayDuration={0}>
         <div
           className="grid"
           style={{
@@ -137,6 +97,9 @@ export function ActivityHeatmap({
             const parts: string[] = [];
             if (c.repeating > 0) parts.push(`リピート ${c.repeating}回`);
             if (c.shadowing > 0) parts.push(`シャドー ${c.shadowing}分`);
+            if (c.output > 0) parts.push(`アウトプット ${c.output}件`);
+            if (c.input > 0) parts.push(`インプット ${c.input}ラウンド`);
+            if (c.songs > 0) parts.push(`ソング ${c.songs}曲`);
             const label = c.future
               ? formatDate(c.date)
               : parts.length > 0
