@@ -122,6 +122,36 @@ export default function SongsPage() {
     );
   }
 
+  // 同じ歌詞（サビの繰り返しなど）が他にもあれば、そこにも同じ和訳を自動で反映する
+  function applyDuplicateTranslations(arr: SongLine[], sourceIndex: number): SongLine[] {
+    const sourceText = arr[sourceIndex]?.text.trim();
+    const sourceTranslation = arr[sourceIndex]?.translation.trim();
+    if (!sourceText || !sourceTranslation) return arr;
+    return arr.map((l) =>
+      l.text.trim() === sourceText && !l.translation.trim()
+        ? { ...l, translation: sourceTranslation }
+        : l,
+    );
+  }
+
+  // 次に進む先は、既に和訳済み（自動反映も含む）の行を飛ばして、
+  // まだ未入力の行にフォーカスが移るようにする
+  function nextLineIndexToFocus(arr: SongLine[], from: number): number {
+    let i = from + 1;
+    while (i < arr.length - 1 && arr[i].translation.trim().length > 0) {
+      i++;
+    }
+    return Math.min(i, arr.length - 1);
+  }
+
+  // 現在の行の和訳を確定し、重複行に反映してから保存する
+  function commitCurrentTranslation(): SongLine[] {
+    const filled = applyDuplicateTranslations(lines, lineIndex);
+    setLines(filled);
+    persistLines(filled);
+    return filled;
+  }
+
   const [backfilling, setBackfilling] = useState(false);
 
   // 追加当時に生成が未実装/一部失敗して hint が空のまま残っている曲を後から埋める
@@ -524,7 +554,10 @@ export default function SongsPage() {
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => setLineIndex((i) => Math.min(lines.length - 1, i + 1))}
+                  onClick={() => {
+                    const filled = commitCurrentTranslation();
+                    setLineIndex(nextLineIndexToFocus(filled, lineIndex));
+                  }}
                   disabled={lineIndex >= lines.length - 1}
                   title="Next line"
                   className="flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-30"
@@ -559,12 +592,12 @@ export default function SongsPage() {
                 <Textarea
                   value={currentLine.translation}
                   onChange={(e) => handleTranslationChange(e.target.value)}
-                  onBlur={() => persistLines(lines)}
+                  onBlur={() => commitCurrentTranslation()}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      persistLines(lines);
-                      setLineIndex((i) => Math.min(lines.length - 1, i + 1));
+                      const filled = commitCurrentTranslation();
+                      setLineIndex(nextLineIndexToFocus(filled, lineIndex));
                     }
                   }}
                   placeholder="このフレーズを日本語に訳してみましょう..."
