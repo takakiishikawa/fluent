@@ -14,12 +14,13 @@ import {
   EmptyState,
   toast,
 } from "@takaki/go-design-system";
-import { Plus, PenLine, Trash2, ExternalLink, Mic, Check } from "lucide-react";
+import { Plus, PenLine, Trash2, ExternalLink, Mic, Check, Sparkles } from "lucide-react";
 import {
   listOutputTopics,
   createOutputTopic,
   updateOutputTopic,
   deleteOutputTopic,
+  generateOutputTopics,
 } from "@/app/actions/output";
 import type { OutputTopic, OutputResponseStatus } from "@/lib/types";
 
@@ -137,6 +138,8 @@ export default function OutputPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [generatingTopics, setGeneratingTopics] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -231,10 +234,11 @@ export default function OutputPage() {
     if (error) toast.error("Failed to save read-aloud count");
   }
 
-  async function handleCreate() {
-    if (!newTitle.trim()) return;
+  async function handleCreate(titleOverride?: string) {
+    const title = (titleOverride ?? newTitle).trim();
+    if (!title) return;
     setCreating(true);
-    const { error, topic } = await createOutputTopic(newTitle.trim());
+    const { error, topic } = await createOutputTopic(title);
     setCreating(false);
     if (error || !topic) {
       toast.error(error ? `Failed to create: ${error}` : "Failed to create");
@@ -244,6 +248,18 @@ export default function OutputPage() {
     setActiveId(topic.id);
     setShowNewModal(false);
     setNewTitle("");
+    setSuggestions([]);
+  }
+
+  async function handleGenerateTopics() {
+    setGeneratingTopics(true);
+    const { error, topics } = await generateOutputTopics();
+    setGeneratingTopics(false);
+    if (error || !topics) {
+      toast.error(error ?? "Failed to generate topics");
+      return;
+    }
+    setSuggestions(topics);
   }
 
   async function handleDelete(id: string) {
@@ -419,7 +435,13 @@ export default function OutputPage() {
         )}
       </div>
 
-      <Dialog open={showNewModal} onOpenChange={setShowNewModal}>
+      <Dialog
+        open={showNewModal}
+        onOpenChange={(open) => {
+          setShowNewModal(open);
+          if (!open) setSuggestions([]);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add topic</DialogTitle>
@@ -432,9 +454,41 @@ export default function OutputPage() {
               if (e.key === "Enter") handleCreate();
             }}
           />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-fit text-muted-foreground"
+            onClick={handleGenerateTopics}
+            disabled={generatingTopics}
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+            {generatingTopics
+              ? "Generating..."
+              : suggestions.length > 0
+                ? "Generate more ideas"
+                : "Generate ideas with AI"}
+          </Button>
+          {suggestions.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {suggestions.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleCreate(s)}
+                  disabled={creating}
+                  className="rounded-[12px] px-3.5 py-2.5 text-left text-[13.5px] leading-snug transition-colors hover:opacity-90 disabled:opacity-50"
+                  style={{
+                    background: "var(--color-primary-soft)",
+                    color: "var(--color-primary)",
+                  }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
           <DialogFooter>
             <Button
-              onClick={handleCreate}
+              onClick={() => handleCreate()}
               disabled={creating || !newTitle.trim()}
             >
               {creating ? "Creating..." : "Add"}
