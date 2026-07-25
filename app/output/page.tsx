@@ -139,7 +139,9 @@ export default function OutputPage() {
   const [newTitle, setNewTitle] = useState("");
   const [creating, setCreating] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<Set<number>>(new Set());
   const [generatingTopics, setGeneratingTopics] = useState(false);
+  const [addingSuggestions, setAddingSuggestions] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -234,8 +236,8 @@ export default function OutputPage() {
     if (error) toast.error("Failed to save read-aloud count");
   }
 
-  async function handleCreate(titleOverride?: string) {
-    const title = (titleOverride ?? newTitle).trim();
+  async function handleCreate() {
+    const title = newTitle.trim();
     if (!title) return;
     setCreating(true);
     const { error, topic } = await createOutputTopic(title);
@@ -246,9 +248,14 @@ export default function OutputPage() {
     }
     setTopics((prev) => [topic, ...prev]);
     setActiveId(topic.id);
+    closeNewModal();
+  }
+
+  function closeNewModal() {
     setShowNewModal(false);
     setNewTitle("");
     setSuggestions([]);
+    setSelectedSuggestions(new Set());
   }
 
   async function handleGenerateTopics() {
@@ -260,6 +267,38 @@ export default function OutputPage() {
       return;
     }
     setSuggestions(topics);
+    setSelectedSuggestions(new Set(topics.map((_, i) => i)));
+  }
+
+  function toggleSuggestion(i: number) {
+    setSelectedSuggestions((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
+
+  async function handleAddSelectedSuggestions() {
+    const titles = suggestions.filter((_, i) => selectedSuggestions.has(i));
+    if (titles.length === 0) return;
+    setAddingSuggestions(true);
+    const results = await Promise.all(titles.map((t) => createOutputTopic(t)));
+    setAddingSuggestions(false);
+
+    const created = results
+      .map((r) => r.topic)
+      .filter((t): t is OutputTopic => !!t);
+    if (created.length > 0) {
+      setTopics((prev) => [...created, ...prev]);
+      setActiveId(created[0].id);
+      toast.success(`Added ${created.length} topic${created.length === 1 ? "" : "s"}`);
+    }
+    const failedCount = titles.length - created.length;
+    if (failedCount > 0) {
+      toast.error(`Failed to add ${failedCount} topic${failedCount === 1 ? "" : "s"}`);
+    }
+    closeNewModal();
   }
 
   async function handleDelete(id: string) {
@@ -343,7 +382,7 @@ export default function OutputPage() {
                 </p>
                 <div className="flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-[12px] text-muted-foreground">
                   {written && <StatusDot status={needsReview ? "draft" : "revised"} />}
-                  {written ? (needsReview ? "Draft" : "Revised") : "Not started"} · {formatDate(t.updated_at)}
+                  {written ? formatDate(t.updated_at) : `Not started · ${formatDate(t.updated_at)}`}
                   {readAloud && (
                     <span
                       className="flex items-center gap-1 font-semibold"
@@ -434,8 +473,8 @@ export default function OutputPage() {
       <Dialog
         open={showNewModal}
         onOpenChange={(open) => {
-          setShowNewModal(open);
-          if (!open) setSuggestions([]);
+          if (open) setShowNewModal(true);
+          else closeNewModal();
         }}
       >
         <DialogContent>
@@ -450,45 +489,91 @@ export default function OutputPage() {
               if (e.key === "Enter") handleCreate();
             }}
           />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-fit text-muted-foreground"
-            onClick={handleGenerateTopics}
-            disabled={generatingTopics}
-          >
-            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            {generatingTopics
-              ? "Generating..."
-              : suggestions.length > 0
-                ? "Generate more ideas"
-                : "Generate ideas with AI"}
-          </Button>
-          {suggestions.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              {suggestions.map((s, i) => (
+
+          {suggestions.length === 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-fit text-muted-foreground"
+              onClick={handleGenerateTopics}
+              disabled={generatingTopics}
+            >
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              {generatingTopics ? "Generating ideas..." : "Generate ideas with AI"}
+            </Button>
+          ) : (
+            <div
+              className="rounded-[14px]"
+              style={{ border: "1px solid var(--color-border-default)" }}
+            >
+              <div
+                className="flex items-center justify-between px-3.5 py-2.5"
+                style={{ borderBottom: "1px solid var(--color-border-default)" }}
+              >
+                <span className="text-[12px] font-semibold text-muted-foreground">
+                  {selectedSuggestions.size} of {suggestions.length} selected
+                </span>
                 <button
-                  key={i}
-                  onClick={() => handleCreate(s)}
-                  disabled={creating}
-                  className="rounded-[12px] px-3.5 py-2.5 text-left text-[13.5px] leading-snug transition-colors hover:opacity-90 disabled:opacity-50"
-                  style={{
-                    background: "var(--color-primary-soft)",
-                    color: "var(--color-primary)",
-                  }}
+                  onClick={handleGenerateTopics}
+                  disabled={generatingTopics}
+                  className="flex items-center gap-1 text-[12px] font-semibold disabled:opacity-50"
+                  style={{ color: "var(--color-primary)" }}
                 >
-                  {s}
+                  <Sparkles className="h-3 w-3" />
+                  {generatingTopics ? "Generating..." : "Regenerate"}
                 </button>
-              ))}
+              </div>
+              <div className="max-h-[260px] overflow-y-auto p-1.5">
+                {suggestions.map((s, i) => {
+                  const selected = selectedSuggestions.has(i);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => toggleSuggestion(i)}
+                      className="flex w-full items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors"
+                      style={{
+                        background: selected ? "var(--color-primary-soft)" : "transparent",
+                      }}
+                    >
+                      <span
+                        className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full"
+                        style={{
+                          border: `2px solid ${selected ? "var(--color-primary)" : "var(--color-border-default)"}`,
+                          background: selected ? "var(--color-primary)" : "transparent",
+                        }}
+                      >
+                        {selected && (
+                          <Check className="h-3 w-3" strokeWidth={3} style={{ color: "var(--color-surface)" }} />
+                        )}
+                      </span>
+                      <span
+                        className="text-[13.5px] leading-snug"
+                        style={{ color: selected ? "var(--color-primary)" : "var(--color-text-primary)" }}
+                      >
+                        {s}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
+
           <DialogFooter>
-            <Button
-              onClick={() => handleCreate()}
-              disabled={creating || !newTitle.trim()}
-            >
-              {creating ? "Creating..." : "Add"}
-            </Button>
+            {suggestions.length > 0 ? (
+              <Button
+                onClick={handleAddSelectedSuggestions}
+                disabled={addingSuggestions || selectedSuggestions.size === 0}
+              >
+                {addingSuggestions
+                  ? "Adding..."
+                  : `Add ${selectedSuggestions.size} topic${selectedSuggestions.size === 1 ? "" : "s"}`}
+              </Button>
+            ) : (
+              <Button onClick={handleCreate} disabled={creating || !newTitle.trim()}>
+                {creating ? "Creating..." : "Add"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
