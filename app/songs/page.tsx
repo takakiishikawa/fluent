@@ -5,7 +5,6 @@ import {
   Button,
   Input,
   Textarea,
-  Switch,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -34,23 +33,30 @@ import {
   ChevronRight,
   MoreVertical,
   Trash2,
+  Check,
+  Languages,
+  ArrowLeft,
 } from "lucide-react";
 import {
   listSongs,
   createSong,
   updateSongLines,
   fetchYoutubeMeta,
-  backfillSongHints,
+  backfillSongAnalysis,
+  generateDiffComments,
   deleteSong,
 } from "@/app/actions/songs";
 import { extractYoutubeVideoId } from "@/lib/youtube";
 import type { Song, SongLine } from "@/lib/types";
 import { YoutubePlayer, type YoutubePlayerHandle } from "@/components/youtube-player";
 
+type Mode = "practice" | "review";
+
 export default function SongsPage() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("practice");
   const [lineIndex, setLineIndex] = useState(0);
   const [lines, setLines] = useState<SongLine[]>([]);
   const [playing, setPlaying] = useState(false);
@@ -61,6 +67,8 @@ export default function SongsPage() {
   const [newLyrics, setNewLyrics] = useState("");
   const [creating, setCreating] = useState(false);
   const [fetchingMeta, setFetchingMeta] = useState(false);
+  const [startingReview, setStartingReview] = useState(false);
+  const [showJaPopup, setShowJaPopup] = useState(false);
   const fetchedForVideoId = useRef<string | null>(null);
 
   async function handleVideoUrlBlur() {
@@ -93,12 +101,20 @@ export default function SongsPage() {
     [songs, activeId],
   );
 
+  // 曲を切り替えたときだけ行位置・モードをリセットする（保存のたびにリセットしない）
+  useEffect(() => {
+    setLineIndex(0);
+    setMode("practice");
+  }, [active?.id]);
+
   useEffect(() => {
     setLines(active?.lines ?? []);
-    setLineIndex(0);
-  }, [active?.id, active?.lines]);
+  }, [active?.lines]);
 
   const currentLine = lines[lineIndex] ?? null;
+  const translatedCount = lines.filter((l) => l.translation.trim().length > 0).length;
+  const allTranslated = lines.length > 0 && translatedCount === lines.length;
+  const allReviewed = lines.length > 0 && lines.every((l) => l.reviewed);
 
   function handleTranslationChange(text: string) {
     setLines((prev) =>
@@ -106,19 +122,16 @@ export default function SongsPage() {
     );
   }
 
-  // 参考訳（ヒント）。曲を追加した時点でAIが全行分をDBに保存済みなので、
-  // ここでは表示するだけ（オンデマンドの翻訳API呼び出しはしない）
-  const [showHint, setShowHint] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
 
-  // 追加当時に翻訳が未実装/一部失敗して hint が空のまま残っている曲を後から埋める
+  // 追加当時に生成が未実装/一部失敗して hint が空のまま残っている曲を後から埋める
   useEffect(() => {
     if (!active) return;
     const hasMissingHint = active.lines.some((l) => !l.hint?.trim());
     if (!hasMissingHint) return;
     let cancelled = false;
     setBackfilling(true);
-    backfillSongHints(active.id)
+    backfillSongAnalysis(active.id)
       .then(({ lines: filled }) => {
         if (cancelled || !filled) return;
         setSongs((prev) =>
@@ -144,6 +157,31 @@ export default function SongsPage() {
     setSongs((prev) =>
       prev.map((s) => (s.id === active.id ? { ...s, lines: next } : s)),
     );
+  }
+
+  function handleToggleReviewed(index: number) {
+    const next = lines.map((l, i) =>
+      i === index ? { ...l, reviewed: !l.reviewed } : l,
+    );
+    setLines(next);
+    persistLines(next);
+  }
+
+  async function handleStartReview() {
+    if (!active || !allTranslated) return;
+    setStartingReview(true);
+    const { error, lines: updated } = await generateDiffComments(active.id);
+    setStartingReview(false);
+    if (error) {
+      toast.error("Failed to prepare review");
+      return;
+    }
+    if (updated) {
+      setSongs((prev) =>
+        prev.map((s) => (s.id === active.id ? { ...s, lines: updated } : s)),
+      );
+    }
+    setMode("review");
   }
 
   async function handleCreate() {
@@ -222,6 +260,17 @@ export default function SongsPage() {
               </SelectContent>
             </Select>
           )}
+          {allReviewed && (
+            <Button
+              size="sm"
+              variant="outline"
+              title="View your translation"
+              onClick={() => setShowJaPopup(true)}
+            >
+              <Languages className="h-4 w-4 mr-1.5" />
+              JA
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -258,6 +307,116 @@ export default function SongsPage() {
           title="No songs yet"
           description='Add one with "Add song" — paste a YouTube link and the lyrics, then translate it line by line.'
         />
+      ) : mode === "review" ? (
+        <div
+          className="min-h-0 flex-1 overflow-y-auto rounded-[20px] p-[22px]"
+          style={{
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-border-default)",
+          }}
+        >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <button
+              onClick={() => setMode("practice")}
+              className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to practice
+            </button>
+            <span className="text-[12.5px] font-semibold text-muted-foreground">
+              {lines.filter((l) => l.reviewed).length}/{lines.length} lines OK
+            </span>
+          </div>
+
+          {allReviewed && (
+            <div
+              className="mb-4 flex items-center gap-2 rounded-[14px] px-4 py-3 text-[13.5px] font-semibold"
+              style={{ background: "var(--color-primary-soft)", color: "var(--color-primary)" }}
+            >
+              <Check className="h-4 w-4" strokeWidth={3} />
+              All lines reviewed — this song's translation is complete!
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {lines.map((line, i) => (
+              <div
+                key={i}
+                className="rounded-[16px] p-4"
+                style={{ border: "1px solid var(--color-border-default)" }}
+              >
+                <div className="mb-2.5 flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground">
+                      {i + 1}/{lines.length}
+                    </span>
+                    <p className="text-[16px] font-bold leading-snug text-foreground">
+                      {line.text}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleToggleReviewed(i)}
+                    className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors"
+                    style={{
+                      border: `1px solid ${line.reviewed ? "var(--color-primary)" : "var(--color-border-default)"}`,
+                      background: line.reviewed ? "var(--color-primary)" : "transparent",
+                      color: line.reviewed ? "var(--color-surface)" : "var(--color-text-secondary)",
+                    }}
+                  >
+                    {line.reviewed && <Check className="h-3 w-3" strokeWidth={3} />}
+                    {line.reviewed ? "OK" : "Mark as OK"}
+                  </button>
+                </div>
+
+                <Textarea
+                  value={line.translation}
+                  onChange={(e) =>
+                    setLines((prev) =>
+                      prev.map((l, j) =>
+                        j === i ? { ...l, translation: e.target.value } : l,
+                      ),
+                    )
+                  }
+                  onBlur={() => persistLines(lines)}
+                  placeholder="このフレーズを日本語に訳してみましょう..."
+                  rows={2}
+                  className="mb-3 resize-none text-[14px]"
+                  style={{ background: "var(--color-background)" }}
+                />
+
+                <div className="space-y-1.5 text-[13px] leading-relaxed">
+                  <p>
+                    <span className="font-semibold text-muted-foreground">Official: </span>
+                    <span className="text-foreground">{line.hint || "—"}</span>
+                  </p>
+                  {line.vocabNotes && (
+                    <p>
+                      <span className="font-semibold text-muted-foreground">Vocab: </span>
+                      <span className="text-foreground">{line.vocabNotes}</span>
+                    </p>
+                  )}
+                  {line.grammarNotes && (
+                    <p>
+                      <span className="font-semibold text-muted-foreground">Grammar: </span>
+                      <span className="text-foreground">{line.grammarNotes}</span>
+                    </p>
+                  )}
+                  {line.diffComment && (
+                    <p
+                      className="mt-1.5 rounded-[10px] px-3 py-2"
+                      style={{ background: "var(--color-surface-subtle)" }}
+                    >
+                      <span className="font-semibold" style={{ color: "var(--color-accent)" }}>
+                        Comment:{" "}
+                      </span>
+                      <span className="text-foreground">{line.diffComment}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : (
         <div
           className="grid min-h-0 flex-1 gap-[22px]"
@@ -329,31 +488,34 @@ export default function SongsPage() {
               </div>
             </div>
 
+            <div
+              className="mt-3.5 flex items-center justify-between gap-3 rounded-full px-4 py-2"
+              style={{ background: "var(--color-surface-subtle)" }}
+            >
+              <span className="text-[12px] font-semibold text-muted-foreground">
+                {translatedCount}/{lines.length} lines translated
+              </span>
+              <Button
+                size="sm"
+                disabled={!allTranslated || startingReview}
+                onClick={handleStartReview}
+              >
+                {startingReview ? "Preparing review..." : "Start review →"}
+              </Button>
+            </div>
+
             {currentLine && (
               <div
                 className="mt-[18px] flex flex-col rounded-[16px] p-5"
                 style={{ background: "var(--color-surface-subtle)" }}
               >
-                <div className="mb-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
-                        {lineIndex + 1}/{lines.length}
-                      </span>
-                      <p className="text-[20px] font-bold leading-snug text-foreground">
-                        {currentLine.text}
-                      </p>
-                    </div>
-                    <label className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                      JA
-                      <Switch checked={showHint} onCheckedChange={setShowHint} />
-                    </label>
-                  </div>
-                  {showHint && (currentLine.hint || backfilling) && (
-                    <p className="mt-1.5 text-[13px] italic text-muted-foreground">
-                      {currentLine.hint ? `— ${currentLine.hint}` : "Translating…"}
-                    </p>
-                  )}
+                <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
+                    {lineIndex + 1}/{lines.length}
+                  </span>
+                  <p className="text-[20px] font-bold leading-snug text-foreground">
+                    {currentLine.text}
+                  </p>
                 </div>
                 <Textarea
                   value={currentLine.translation}
@@ -430,18 +592,8 @@ export default function SongsPage() {
             <p className="text-[12px] text-muted-foreground">
               {fetchingMeta
                 ? "Fetching title & artist from YouTube…"
-                : "Title and artist are filled in automatically from the video — edit if needed."}
+                : "Title and artist are filled in automatically from the video."}
             </p>
-            <Input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Song title (auto-filled)"
-            />
-            <Input
-              value={newArtist}
-              onChange={(e) => setNewArtist(e.target.value)}
-              placeholder="Artist (auto-filled)"
-            />
             <Textarea
               value={newLyrics}
               onChange={(e) => setNewLyrics(e.target.value)}
@@ -458,6 +610,26 @@ export default function SongsPage() {
               {creating ? "Adding..." : "Add"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showJaPopup} onOpenChange={setShowJaPopup}>
+        <DialogContent className="max-h-[80vh] max-w-[560px] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{active?.title} — Your translation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {active?.lines.map((line, i) => (
+              <div key={i}>
+                <p className="text-[14px] font-semibold leading-snug text-foreground">
+                  {line.text}
+                </p>
+                <p className="text-[13px] leading-snug text-muted-foreground">
+                  {line.translation}
+                </p>
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

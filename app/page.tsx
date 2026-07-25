@@ -295,20 +295,20 @@ export default async function HomePage() {
     outputByDate.set(d, (outputByDate.get(d) ?? 0) + written);
   }
 
-  // ── Songs（全行の和訳が完了した曲を1本としてカウント） ──
+  // ── Songs（全行がレビュー完了(OK)になった曲を1本としてカウント） ──
   const songs = (songsResult.data ?? []) as {
-    lines: { translation: string }[];
+    lines: { reviewed: boolean }[];
     updated_at: string;
   }[];
   const songsCompletedThisWeek = songs.filter(
     (s) =>
       s.updated_at >= weekAgoISO &&
       s.lines.length > 0 &&
-      s.lines.every((l) => l.translation.trim().length > 0),
+      s.lines.every((l) => l.reviewed),
   ).length;
   const songsByDate = new Map<string, number>();
   for (const s of songs) {
-    if (s.lines.length === 0 || !s.lines.every((l) => l.translation.trim().length > 0)) {
+    if (s.lines.length === 0 || !s.lines.every((l) => l.reviewed)) {
       continue;
     }
     const d = s.updated_at.slice(0, 10);

@@ -9,47 +9,67 @@ import type { Song, SongLine } from "@/lib/types";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SONG_TRANSLATE_SYSTEM_PROMPT = `You translate English song lyrics into natural, singable Japanese for a language learner.
+// ── 曲追加時: 公式和訳 + 語彙解説 + 文法解説をまとめて生成 ──
+
+type LineAnalysis = {
+  translation: string;
+  vocabNotes: string;
+  grammarNotes: string;
+};
+
+const SONG_ANALYZE_SYSTEM_PROMPT = `You analyze English song lyrics, line by line, for a Japanese learner who is translating the song themselves as a study exercise.
+
+For EACH line, produce:
+1. "translation": a natural, idiomatic Japanese translation of the line (not word-for-word).
+2. "vocabNotes": a short Japanese note (~20-40字) on any notable vocabulary, idioms, phrasal verbs, or slang in the line. Empty string if nothing notable.
+3. "grammarNotes": a short Japanese note (~20-40字) on any notable grammar point in the line (tense, structure, contraction, ellipsis, inversion, etc.). Empty string if nothing notable.
 
 Rules:
-- Translate EACH line independently but keep the overall song's meaning/tone consistent across lines.
-- Natural, idiomatic Japanese — not a stiff word-for-word translation.
-- No furigana, no explanations, no romanization. Japanese text only per line.
-- Preserve line order exactly; return exactly one translation per input line.
+- Keep the overall song's meaning/tone consistent across lines.
+- Notes should help a learner understand WHY the line means what it means — not just restate the translation.
+- Return exactly one entry per input line, in the same order.
 
 Return ONLY via the tool.`;
 
-const SONG_TRANSLATE_TOOL_SCHEMA = {
+const SONG_ANALYZE_TOOL_SCHEMA = {
   type: "object" as const,
   properties: {
-    translations: {
+    lines: {
       type: "array" as const,
-      items: { type: "string" as const },
-      description: "Japanese translation for each input line, in the same order.",
+      items: {
+        type: "object" as const,
+        properties: {
+          translation: { type: "string" as const },
+          vocabNotes: { type: "string" as const },
+          grammarNotes: { type: "string" as const },
+        },
+        required: ["translation", "vocabNotes", "grammarNotes"],
+      },
     },
   },
-  required: ["translations"],
+  required: ["lines"],
 };
 
-async function translateLinesToJapanese(texts: string[]): Promise<string[]> {
+async function analyzeSongLines(texts: string[]): Promise<LineAnalysis[]> {
   if (texts.length === 0) return [];
 
-  const userMessage = `Lyrics lines (translate each one):\n${texts
+  const userMessage = `Lyrics lines (analyze each one):\n${texts
     .map((t, i) => `${i + 1}. ${t}`)
     .join("\n")}`;
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 8192,
-    system: SONG_TRANSLATE_SYSTEM_PROMPT,
+    max_tokens: 16000,
+    system: SONG_ANALYZE_SYSTEM_PROMPT,
     tools: [
       {
-        name: "save_translations",
-        description: "Save the Japanese translation for each lyrics line.",
-        input_schema: SONG_TRANSLATE_TOOL_SCHEMA,
+        name: "save_analysis",
+        description:
+          "Save the translation, vocab notes, and grammar notes for each lyrics line.",
+        input_schema: SONG_ANALYZE_TOOL_SCHEMA,
       },
     ],
-    tool_choice: { type: "tool", name: "save_translations" },
+    tool_choice: { type: "tool", name: "save_analysis" },
     messages: [{ role: "user", content: userMessage }],
   });
 
@@ -57,8 +77,71 @@ async function translateLinesToJapanese(texts: string[]): Promise<string[]> {
   if (!toolUse || toolUse.type !== "tool_use") {
     throw new Error("AI response did not include tool_use");
   }
-  const { translations } = toolUse.input as { translations: string[] };
-  return texts.map((_, i) => translations[i] ?? "");
+  const { lines } = toolUse.input as { lines: LineAnalysis[] };
+  return texts.map(
+    (_, i) => lines[i] ?? { translation: "", vocabNotes: "", grammarNotes: "" },
+  );
+}
+
+// ── レビュー時: 自分の訳と公式訳の違いについてのコメントを生成 ──
+
+const DIFF_SYSTEM_PROMPT = `You compare a language learner's own Japanese translation of an English lyrics line against a natural reference translation, and give brief, specific feedback in Japanese on the difference.
+
+For EACH line, given the ORIGINAL English text, the LEARNER's translation, and the REFERENCE translation, write a short comment (~30-60字) in Japanese:
+- If the learner's translation captures the meaning well, say so briefly and note only minor nuance differences (if any).
+- If there's a meaningful difference in meaning/nuance, explain what the reference conveys that the learner's version doesn't (or vice versa).
+- Be constructive and specific — reference the actual words/nuance, not a generic "good job."
+- Keep it short: one or two sentences.
+
+Return exactly one comment per line, in the same order.
+
+Return ONLY via the tool.`;
+
+const DIFF_TOOL_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    comments: {
+      type: "array" as const,
+      items: { type: "string" as const },
+      description: "One comparison comment per line, in the same order.",
+    },
+  },
+  required: ["comments"],
+};
+
+async function compareTranslations(
+  items: { text: string; own: string; reference: string }[],
+): Promise<string[]> {
+  if (items.length === 0) return [];
+
+  const userMessage = items
+    .map(
+      (it, i) =>
+        `${i + 1}.\nORIGINAL: ${it.text}\nLEARNER: ${it.own}\nREFERENCE: ${it.reference}`,
+    )
+    .join("\n\n");
+
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 8192,
+    system: DIFF_SYSTEM_PROMPT,
+    tools: [
+      {
+        name: "save_comments",
+        description: "Save a comparison comment for each line.",
+        input_schema: DIFF_TOOL_SCHEMA,
+      },
+    ],
+    tool_choice: { type: "tool", name: "save_comments" },
+    messages: [{ role: "user", content: userMessage }],
+  });
+
+  const toolUse = message.content.find((c) => c.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") {
+    throw new Error("AI response did not include tool_use");
+  }
+  const { comments } = toolUse.input as { comments: string[] };
+  return items.map((_, i) => comments[i] ?? "");
 }
 
 export async function listSongs(): Promise<Song[]> {
@@ -112,7 +195,15 @@ function splitLyricsIntoLines(raw: string): SongLine[] {
       texts.push(line);
     }
   }
-  return texts.map((text) => ({ text, translation: "", hint: "" }));
+  return texts.map((text) => ({
+    text,
+    translation: "",
+    hint: "",
+    vocabNotes: "",
+    grammarNotes: "",
+    diffComment: "",
+    reviewed: false,
+  }));
 }
 
 export async function createSong(input: {
@@ -137,16 +228,17 @@ export async function createSong(input: {
     return { error: "Paste the song's lyrics" };
   }
 
-  // 追加時にAIで全行を日本語訳し、DBに保存しておく（再生画面ではDBから読むだけにする）
+  // 追加時にAIで全行分の公式和訳・語彙解説・文法解説をまとめて生成しDBに保存しておく
+  // （レビューページでは保存済みのデータを読むだけにする）
   try {
-    const translations = await translateLinesToJapanese(
-      lines.map((l) => l.text),
-    );
+    const analysis = await analyzeSongLines(lines.map((l) => l.text));
     lines.forEach((l, i) => {
-      l.hint = translations[i] ?? "";
+      l.hint = analysis[i]?.translation ?? "";
+      l.vocabNotes = analysis[i]?.vocabNotes ?? "";
+      l.grammarNotes = analysis[i]?.grammarNotes ?? "";
     });
   } catch (err) {
-    console.error("[createSong] translation failed:", err);
+    console.error("[createSong] analysis failed:", err);
   }
 
   // タイトル未入力（oEmbed取得に失敗した等）ならサーバー側でも一度フォールバック取得を試みる
@@ -194,9 +286,10 @@ export async function updateSongLines(
   return {};
 }
 
-// hint(AI参考訳)が空のまま残っている曲を後から埋める。
-// 追加時の翻訳が未実装だった頃の曲や、生成が一部失敗した曲を復旧するためのもの
-export async function backfillSongHints(
+// 公式和訳(hint)が空のまま残っている曲を後から埋める。
+// 追加時の生成が未実装だった頃の曲や、一部だけ生成が失敗した曲を復旧するためのもの。
+// hintが埋まっていない行は、語彙解説・文法解説もまとめて作り直す
+export async function backfillSongAnalysis(
   id: string,
 ): Promise<{ error?: string; lines?: SongLine[] }> {
   const supabase = await createClient();
@@ -215,19 +308,78 @@ export async function backfillSongHints(
     .filter((i) => !lines[i].hint?.trim());
   if (missingIdxs.length === 0) return { lines };
 
-  let translations: string[];
+  let analysis: LineAnalysis[];
   try {
-    translations = await translateLinesToJapanese(
-      missingIdxs.map((i) => lines[i].text),
-    );
+    analysis = await analyzeSongLines(missingIdxs.map((i) => lines[i].text));
   } catch (err) {
-    console.error("[backfillSongHints] translation failed:", err);
-    return { error: "Translation failed" };
+    console.error("[backfillSongAnalysis] analysis failed:", err);
+    return { error: "Analysis failed" };
   }
 
   const nextLines = lines.map((l, i) => {
     const j = missingIdxs.indexOf(i);
-    return j === -1 ? l : { ...l, hint: translations[j] ?? "" };
+    if (j === -1) return l;
+    return {
+      ...l,
+      hint: analysis[j]?.translation ?? "",
+      vocabNotes: analysis[j]?.vocabNotes ?? "",
+      grammarNotes: analysis[j]?.grammarNotes ?? "",
+    };
+  });
+
+  const { error } = await supabase
+    .from("songs")
+    .update({ lines: nextLines })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/songs");
+  return { lines: nextLines };
+}
+
+// レビュー突入時: 自分の訳と公式訳が両方揃っていて、まだコメントがない行にだけ
+// 「違いのコメント」を生成する。生成済みの行は保存済みデータをそのまま使うので
+// レビューページを開くたびにAPIを呼ぶことはない
+export async function generateDiffComments(
+  id: string,
+): Promise<{ error?: string; lines?: SongLine[] }> {
+  const supabase = await createClient();
+  const { data: song, error: fetchError } = await supabase
+    .from("songs")
+    .select("lines")
+    .eq("id", id)
+    .single();
+  if (fetchError || !song) {
+    return { error: fetchError?.message ?? "Song not found" };
+  }
+
+  const lines = (song.lines as SongLine[]) ?? [];
+  const targetIdxs = lines
+    .map((_, i) => i)
+    .filter(
+      (i) =>
+        lines[i].translation.trim().length > 0 &&
+        lines[i].hint.trim().length > 0 &&
+        !lines[i].diffComment?.trim(),
+    );
+  if (targetIdxs.length === 0) return { lines };
+
+  let comments: string[];
+  try {
+    comments = await compareTranslations(
+      targetIdxs.map((i) => ({
+        text: lines[i].text,
+        own: lines[i].translation,
+        reference: lines[i].hint,
+      })),
+    );
+  } catch (err) {
+    console.error("[generateDiffComments] failed:", err);
+    return { error: "Failed to generate comments" };
+  }
+
+  const nextLines = lines.map((l, i) => {
+    const j = targetIdxs.indexOf(i);
+    return j === -1 ? l : { ...l, diffComment: comments[j] ?? "" };
   });
 
   const { error } = await supabase

@@ -126,8 +126,18 @@ export interface OutputTopic {
 
 export interface SongLine {
   text: string;
+  /** 自分で書いた和訳 */
   translation: string;
+  /** 公式和訳(参考訳) */
   hint: string;
+  /** 語彙解説 */
+  vocabNotes: string;
+  /** 文法解説 */
+  grammarNotes: string;
+  /** 自分の訳と公式訳の違いについてのコメント */
+  diffComment: string;
+  /** レビューページでの自己申告チェック(「これでOK」) */
+  reviewed: boolean;
 }
 
 export interface Song {

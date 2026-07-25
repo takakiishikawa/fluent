@@ -40,7 +40,7 @@ type InputRound = {
 };
 
 type SongEntry = {
-  lines: { translation: string }[];
+  lines: { reviewed: boolean }[];
   updated_at: string;
 };
 
@@ -123,11 +123,11 @@ function buildMonthlyInput(rounds: InputRound[]): ChartRow[] {
     .map((ym) => ({ label: fmtMonth(ym), rounds: map.get(ym) ?? 0 }));
 }
 
-/** Songs, aggregated by month (fully-translated songs, bucketed by updated_at) */
+/** Songs, aggregated by month (fully-reviewed songs, bucketed by updated_at) */
 function buildMonthlySongs(songs: SongEntry[]): ChartRow[] {
   const map = new Map<string, number>();
   for (const s of songs) {
-    if (s.lines.length === 0 || !s.lines.every((l) => l.translation.trim().length > 0)) {
+    if (s.lines.length === 0 || !s.lines.every((l) => l.reviewed)) {
       continue;
     }
     const ym = s.updated_at.slice(0, 7);

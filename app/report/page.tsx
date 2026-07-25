@@ -75,7 +75,7 @@ export default async function ReportPage() {
   }[];
 
   const songs = (songsResult.data ?? []) as {
-    lines: { translation: string }[];
+    lines: { reviewed: boolean }[];
     updated_at: string;
   }[];
 
