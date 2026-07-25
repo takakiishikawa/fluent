@@ -1,14 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentLanguage } from "@/lib/language";
 import { ReportCharts } from "@/components/report-charts";
-import { EfSetSection, type EfSetScore } from "@/components/ef-set-section";
 
 export default async function ReportPage() {
   const supabase = await createClient();
   const language = await getCurrentLanguage();
   const isEn = language === "en";
 
-  const [logsResult, youtubeLogsResult, efSetResult] = await Promise.all([
+  const [
+    logsResult,
+    youtubeLogsResult,
+    outputTopicsResult,
+    inputRoundsResult,
+    songsResult,
+  ] = await Promise.all([
     supabase
       .from("practice_logs")
       .select(
@@ -22,11 +27,29 @@ export default async function ReportPage() {
       .eq("language", language)
       .order("completed_at"),
     supabase
-      .from("ef_set_scores")
-      .select(
-        "id, tested_at, reading, listening, writing, speaking, cefr_level",
-      )
-      .order("tested_at", { ascending: false }),
+      .from("output_topics")
+      .select("responses, updated_at")
+      .eq("language", language),
+    isEn
+      ? (async () => {
+          const [g, e] = await Promise.all([
+            supabase
+              .from("grammar")
+              .select("rounds_updated_at")
+              .eq("language", "en")
+              .not("rounds_updated_at", "is", null),
+            supabase
+              .from("expressions")
+              .select("rounds_updated_at")
+              .eq("language", "en")
+              .not("rounds_updated_at", "is", null),
+          ]);
+          return { data: [...(g.data ?? []), ...(e.data ?? [])] };
+        })()
+      : Promise.resolve({ data: [] as { rounds_updated_at: string }[] }),
+    isEn
+      ? supabase.from("songs").select("lines, updated_at").eq("language", "en")
+      : Promise.resolve({ data: [] }),
   ]);
 
   const logs = (logsResult.data ?? []).map((l) => ({
@@ -42,7 +65,19 @@ export default async function ReportPage() {
     duration: l.duration as string | null,
   }));
 
-  const efSetScores: EfSetScore[] = (efSetResult.data ?? []) as EfSetScore[];
+  const outputTopics = (outputTopicsResult.data ?? []) as {
+    responses: string[];
+    updated_at: string;
+  }[];
+
+  const inputRounds = (inputRoundsResult.data ?? []) as {
+    rounds_updated_at: string;
+  }[];
+
+  const songs = (songsResult.data ?? []) as {
+    lines: { translation: string }[];
+    updated_at: string;
+  }[];
 
   return (
     <div className="w-full max-w-[980px]">
@@ -56,11 +91,16 @@ export default async function ReportPage() {
         Progress over time
       </h1>
 
-      <div className="space-y-4">
-        {/* EF SET は英語学習時のみ */}
-        {isEn && <EfSetSection scores={efSetScores} />}
-        <ReportCharts logs={logs} youtubeLogs={youtubeLogs} showWord={!isEn} />
-      </div>
+      <ReportCharts
+        logs={logs}
+        youtubeLogs={youtubeLogs}
+        outputTopics={outputTopics}
+        inputRounds={inputRounds}
+        songs={songs}
+        showWord={!isEn}
+        showInputAndSongs={isEn}
+        shadowingLabel={isEn ? "Ryan" : "Shadowing"}
+      />
     </div>
   );
 }

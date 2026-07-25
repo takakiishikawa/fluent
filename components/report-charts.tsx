@@ -30,6 +30,20 @@ type YoutubeLog = {
   duration: string | null;
 };
 
+type OutputTopic = {
+  responses: string[];
+  updated_at: string;
+};
+
+type InputRound = {
+  rounds_updated_at: string;
+};
+
+type SongEntry = {
+  lines: { translation: string }[];
+  updated_at: string;
+};
+
 function parseDurToMin(dur: string | null | undefined): number {
   if (!dur) return 0;
   const parts = dur.split(":").map(Number);
@@ -40,12 +54,15 @@ function parseDurToMin(dur: string | null | undefined): number {
 
 function fmtMonth(ym: string): string {
   const [y, m] = ym.split("-");
-  return `${y}/${m}`;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    year: "numeric",
+  }).format(new Date(Number(y), Number(m) - 1, 1));
 }
 
 type ChartRow = Record<string, string | number>;
 
-/** リピーティングを月単位で集計 */
+/** Repeating, aggregated by month */
 function buildMonthlyRepeating(logs: PracticeLog[]): ChartRow[] {
   const map = new Map<
     string,
@@ -68,7 +85,7 @@ function buildMonthlyRepeating(logs: PracticeLog[]): ChartRow[] {
   }));
 }
 
-/** シャドーイング（YouTube視聴時間）を月単位で集計 */
+/** Shadowing (YouTube watch time), aggregated by month */
 function buildMonthlyShadowing(youtubeLogs: YoutubeLog[]): ChartRow[] {
   const map = new Map<string, number>();
   for (const l of youtubeLogs) {
@@ -80,31 +97,100 @@ function buildMonthlyShadowing(youtubeLogs: YoutubeLog[]): ChartRow[] {
     .map((ym) => ({ label: fmtMonth(ym), minutes: map.get(ym) ?? 0 }));
 }
 
+/** Output, aggregated by month (non-empty response versions, bucketed by topic's updated_at) */
+function buildMonthlyOutput(topics: OutputTopic[]): ChartRow[] {
+  const map = new Map<string, number>();
+  for (const t of topics) {
+    const written = t.responses.filter((r) => r.trim().length > 0).length;
+    if (written === 0) continue;
+    const ym = t.updated_at.slice(0, 7);
+    map.set(ym, (map.get(ym) ?? 0) + written);
+  }
+  return [...map.keys()]
+    .sort()
+    .map((ym) => ({ label: fmtMonth(ym), responses: map.get(ym) ?? 0 }));
+}
+
+/** Input, aggregated by month (grammar/expression rounds completed) */
+function buildMonthlyInput(rounds: InputRound[]): ChartRow[] {
+  const map = new Map<string, number>();
+  for (const r of rounds) {
+    const ym = r.rounds_updated_at.slice(0, 7);
+    map.set(ym, (map.get(ym) ?? 0) + 1);
+  }
+  return [...map.keys()]
+    .sort()
+    .map((ym) => ({ label: fmtMonth(ym), rounds: map.get(ym) ?? 0 }));
+}
+
+/** Songs, aggregated by month (fully-translated songs, bucketed by updated_at) */
+function buildMonthlySongs(songs: SongEntry[]): ChartRow[] {
+  const map = new Map<string, number>();
+  for (const s of songs) {
+    if (s.lines.length === 0 || !s.lines.every((l) => l.translation.trim().length > 0)) {
+      continue;
+    }
+    const ym = s.updated_at.slice(0, 7);
+    map.set(ym, (map.get(ym) ?? 0) + 1);
+  }
+  return [...map.keys()]
+    .sort()
+    .map((ym) => ({ label: fmtMonth(ym), songs: map.get(ym) ?? 0 }));
+}
+
 const repeatingConfig: ChartConfig = {
-  grammar: { label: "文法", color: "var(--color-primary)" },
-  expression: { label: "フレーズ", color: "var(--color-primary-chart-2)" },
-  word: { label: "単語", color: "var(--color-primary-chart-3)" },
+  grammar: { label: "Grammar", color: "var(--color-primary)" },
+  expression: { label: "Phrases", color: "var(--color-primary-chart-2)" },
+  word: { label: "Words", color: "var(--color-primary-chart-3)" },
 };
 const shadowingConfig: ChartConfig = {
-  minutes: { label: "視聴時間", color: "var(--color-primary)" },
+  minutes: { label: "Minutes", color: "var(--color-primary)" },
+};
+const outputConfig: ChartConfig = {
+  responses: { label: "Responses", color: "var(--color-primary)" },
+};
+const inputConfig: ChartConfig = {
+  rounds: { label: "Rounds", color: "var(--color-primary)" },
+};
+const songsConfig: ChartConfig = {
+  songs: { label: "Songs", color: "var(--color-primary)" },
 };
 
 export function ReportCharts({
   logs,
   youtubeLogs,
+  outputTopics,
+  inputRounds,
+  songs,
   showWord = true,
+  showInputAndSongs = true,
+  shadowingLabel = "Ryan",
 }: {
   logs: PracticeLog[];
   youtubeLogs: YoutubeLog[];
+  outputTopics: OutputTopic[];
+  inputRounds: InputRound[];
+  songs: SongEntry[];
   showWord?: boolean;
+  showInputAndSongs?: boolean;
+  shadowingLabel?: string;
 }) {
   const repeatingData = useMemo(() => buildMonthlyRepeating(logs), [logs]);
   const shadowingData = useMemo(
     () => buildMonthlyShadowing(youtubeLogs),
     [youtubeLogs],
   );
+  const outputData = useMemo(
+    () => buildMonthlyOutput(outputTopics),
+    [outputTopics],
+  );
+  const inputData = useMemo(
+    () => buildMonthlyInput(inputRounds),
+    [inputRounds],
+  );
+  const songsData = useMemo(() => buildMonthlySongs(songs), [songs]);
 
-  // 英語モードでは単語シリーズを出さない
+  // VI mode only: include the "word" series in Repeating
   const repeatingYKeys = showWord
     ? ["grammar", "expression", "word"]
     : ["grammar", "expression"];
@@ -122,8 +208,8 @@ export function ReportCharts({
         config={repeatingChartConfig}
         xKey="label"
         yKeys={repeatingYKeys}
-        title="リピーティング（月次）"
-        unit="回"
+        title="Repeating (monthly)"
+        unit="reps"
         height={170}
       />
       <ReportAreaChart
@@ -131,10 +217,41 @@ export function ReportCharts({
         config={shadowingConfig}
         xKey="label"
         yKeys={["minutes"]}
-        title="シャドーイング（月次）"
-        unit="分"
+        title={`${shadowingLabel} (monthly)`}
+        unit="min"
         height={170}
       />
+      <ReportAreaChart
+        data={outputData as Record<string, unknown>[]}
+        config={outputConfig}
+        xKey="label"
+        yKeys={["responses"]}
+        title="Output (monthly)"
+        unit="res."
+        height={170}
+      />
+      {showInputAndSongs && (
+        <>
+          <ReportAreaChart
+            data={inputData as Record<string, unknown>[]}
+            config={inputConfig}
+            xKey="label"
+            yKeys={["rounds"]}
+            title="Input (monthly)"
+            unit="rounds"
+            height={170}
+          />
+          <ReportAreaChart
+            data={songsData as Record<string, unknown>[]}
+            config={songsConfig}
+            xKey="label"
+            yKeys={["songs"]}
+            title="Songs (monthly)"
+            unit="songs"
+            height={170}
+          />
+        </>
+      )}
     </div>
   );
 }
