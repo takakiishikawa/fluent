@@ -61,7 +61,7 @@ const MONTH_ABBR = [
 
 // ─── PlanRow ─────────────────────────────────────────────────────────────────
 
-type PlanItem = {
+export type PlanItem = {
   href: string;
   label: string;
   detail: string;
@@ -141,6 +141,7 @@ export default async function HomePage() {
     settingsResult,
     outputTopicsResult,
     inputRoundsResult,
+    songsResult,
   ] = await Promise.all([
     supabase
       .from("practice_logs")
@@ -186,6 +187,9 @@ export default async function HomePage() {
           ]);
           return { count: (g.count ?? 0) + (e.count ?? 0) };
         })(),
+    isVi
+      ? Promise.resolve({ data: [] })
+      : supabase.from("songs").select("lines, updated_at").eq("language", "en"),
   ]);
 
   type RangeLog = {
@@ -270,6 +274,18 @@ export default async function HomePage() {
       0,
     );
 
+  // ── Songs（全行の和訳が完了した曲を1本としてカウント） ──
+  const songs = (songsResult.data ?? []) as {
+    lines: { translation: string }[];
+    updated_at: string;
+  }[];
+  const songsCompletedThisWeek = songs.filter(
+    (s) =>
+      s.updated_at >= weekAgoISO &&
+      s.lines.length > 0 &&
+      s.lines.every((l) => l.translation.trim().length > 0),
+  ).length;
+
   // ── 次の金曜日までの日数 ──
   const daysUntilFriday = 7 - daysSinceFriday;
 
@@ -278,35 +294,46 @@ export default async function HomePage() {
   const baselineShadowing = settings?.baseline_shadowing ?? 75;
   const baselineOutput = settings?.baseline_output ?? 2;
   const baselineInput = settings?.baseline_input ?? 1;
+  const baselineSongs = settings?.baseline_songs ?? 2;
   const weeklyInputRounds = inputRoundsResult.count ?? 0;
 
   const planItems: PlanItem[] = [
     {
       href: "/repeating",
       label: "Repeating",
-      detail: `${weeklyRepeating} / ${baselineRepeating} reps this week`,
+      detail: `${weeklyRepeating} / ${baselineRepeating} reps`,
       done: weeklyRepeating >= baselineRepeating,
     },
     {
       href: "/shadowing",
       label: isVi ? "Shadowing" : "Ryan",
-      detail: `${weeklyShadowingVideos} video${weeklyShadowingVideos === 1 ? "" : "s"} · ${weeklyShadowing} / ${baselineShadowing} min this week`,
+      detail: `${weeklyShadowingVideos} video${weeklyShadowingVideos === 1 ? "" : "s"} · ${weeklyShadowing} / ${baselineShadowing} min`,
       done: weeklyShadowing >= baselineShadowing,
     },
     {
       href: "/output",
       label: "Output",
-      detail: `${outputThisWeek} / ${baselineOutput} response${baselineOutput === 1 ? "" : "s"} this week`,
+      detail: `${outputThisWeek} / ${baselineOutput} response${baselineOutput === 1 ? "" : "s"}`,
       done: outputThisWeek >= baselineOutput,
     },
     {
       href: isVi ? "/list" : "/library",
       label: isVi ? "Library" : "Input",
       detail: isVi
-        ? `${weeklyInputRounds} round${weeklyInputRounds === 1 ? "" : "s"} this week`
-        : `${weeklyInputRounds} / ${baselineInput} round${baselineInput === 1 ? "" : "s"} this week`,
+        ? `${weeklyInputRounds} round${weeklyInputRounds === 1 ? "" : "s"}`
+        : `${weeklyInputRounds} / ${baselineInput} round${baselineInput === 1 ? "" : "s"}`,
       done: isVi ? true : weeklyInputRounds >= baselineInput,
     },
+    ...(isVi
+      ? []
+      : [
+          {
+            href: "/songs",
+            label: "Songs",
+            detail: `${songsCompletedThisWeek} / ${baselineSongs} song${baselineSongs === 1 ? "" : "s"}`,
+            done: songsCompletedThisWeek >= baselineSongs,
+          },
+        ]),
   ];
   const allPlanDone = planItems.every((p) => p.done);
 
@@ -379,14 +406,14 @@ export default async function HomePage() {
           border: "1px solid var(--color-border-default)",
         }}
       >
-        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 px-0.5">
-          <div>
-            <div className="text-[14px] font-bold text-foreground">
+        <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-2 px-0.5">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="text-[14px] font-bold text-foreground">
               This week&apos;s plan
-            </div>
-            <div className="text-[11.5px] text-muted-foreground">
+            </span>
+            <span className="text-[11.5px] text-muted-foreground">
               {cycleRangeLabel} (Fri–Thu)
-            </div>
+            </span>
           </div>
           {allPlanDone && (
             <div
@@ -410,6 +437,7 @@ export default async function HomePage() {
         monthLabels={monthLabels}
         streak={streak}
         longest={longest}
+        planItems={planItems}
       />
     </div>
   );

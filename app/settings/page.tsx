@@ -16,7 +16,7 @@ const DEFAULTS = {
   baseline_shadowing: 75,
   baseline_output: 2,
   baseline_input: 1,
-  ef_set_interval_months: 3,
+  baseline_songs: 2,
 };
 
 type SettingsValues = typeof DEFAULTS;
@@ -45,8 +45,7 @@ export default function SettingsRoute() {
             data.baseline_shadowing ?? DEFAULTS.baseline_shadowing,
           baseline_output: data.baseline_output ?? DEFAULTS.baseline_output,
           baseline_input: data.baseline_input ?? DEFAULTS.baseline_input,
-          ef_set_interval_months:
-            data.ef_set_interval_months ?? DEFAULTS.ef_set_interval_months,
+          baseline_songs: data.baseline_songs ?? DEFAULTS.baseline_songs,
         });
       }
     }
@@ -129,17 +128,9 @@ export default function SettingsRoute() {
           label="Input"
           control={<NumberInput fieldKey="baseline_input" unit="rounds/week" />}
         />
-      </SettingsGroup>
-
-      <SettingsGroup
-        title="EF SET"
-        description="Set how often you take the EF SET, in months. Once that many months have passed since your last attempt, a reminder banner appears on the dashboard."
-      >
         <SettingsItem
-          label="Interval"
-          control={
-            <NumberInput fieldKey="ef_set_interval_months" unit="months" />
-          }
+          label="Songs"
+          control={<NumberInput fieldKey="baseline_songs" unit="songs/week" />}
         />
       </SettingsGroup>
 

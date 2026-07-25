@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
+import { Check } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@takaki/go-design-system";
+import type { PlanItem } from "@/app/page";
 
 /**
  * 12週間（7行×12列＝84セル）のアクティビティヒートマップ。
@@ -55,26 +58,69 @@ export function ActivityHeatmap({
   monthLabels,
   streak,
   longest,
+  planItems,
 }: {
   cells: HeatmapCell[];
   monthLabels: string[];
   streak: number;
   longest: number;
+  planItems: PlanItem[];
 }) {
   return (
     <div
       className="rounded-[20px] border border-[var(--color-border-default)] bg-[var(--color-surface)] p-[20px_22px]"
     >
-      <div className="mb-3.5 flex items-baseline justify-between">
-        <h3 className="text-[15px] font-semibold text-foreground">
-          12-week activity
-        </h3>
-        <p className="text-[12.5px] text-muted-foreground">
-          {streak}-day streak · best {longest}
-        </p>
-      </div>
-
       <TooltipProvider delayDuration={0}>
+        <div className="mb-3.5 flex items-baseline justify-between">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <h3 className="cursor-default text-[15px] font-semibold text-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-4">
+                12-week activity
+              </h3>
+            </TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              align="start"
+              className="w-[260px] border-none bg-[#1f1d1a] p-3 text-white"
+            >
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-white/50">
+                This week&apos;s plan
+              </p>
+              <div className="space-y-2.5">
+                {planItems.map((item) => (
+                  <div key={item.href} className="flex items-center gap-2.5">
+                    <span
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                      style={{
+                        border: `2px solid ${item.done ? "var(--color-primary)" : "rgba(255,255,255,0.3)"}`,
+                        background: item.done ? "var(--color-primary)" : "transparent",
+                      }}
+                    >
+                      {item.done && <Check className="h-3 w-3" strokeWidth={3} />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[12.5px] font-semibold">{item.label}</div>
+                      <div className="text-[11px] text-white/60">{item.detail}</div>
+                    </div>
+                    {!item.done && (
+                      <Link
+                        href={item.href}
+                        className="shrink-0 text-[11px] font-semibold"
+                        style={{ color: "var(--color-primary-chart-2)" }}
+                      >
+                        Start →
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+          <p className="text-[12.5px] text-muted-foreground">
+            {streak}-day streak · best {longest}
+          </p>
+        </div>
+
         <div
           className="grid"
           style={{
