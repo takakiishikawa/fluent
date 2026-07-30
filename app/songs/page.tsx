@@ -116,6 +116,20 @@ export default function SongsPage() {
   const allTranslated = lines.length > 0 && translatedCount === lines.length;
   const allReviewed = lines.length > 0 && lines.every((l) => l.reviewed);
 
+  // レビューでは同じ歌詞（サビの繰り返しなど）を重複表示せず、
+  // 最初に出てきた行だけを代表として1つ表示する
+  const uniqueReviewLines = useMemo(() => {
+    const seen = new Set<string>();
+    const result: { line: SongLine; index: number }[] = [];
+    lines.forEach((line, index) => {
+      const key = line.text.trim();
+      if (seen.has(key)) return;
+      seen.add(key);
+      result.push({ line, index });
+    });
+    return result;
+  }, [lines]);
+
   function handleTranslationChange(text: string) {
     setLines((prev) =>
       prev.map((l, i) => (i === lineIndex ? { ...l, translation: text } : l)),
@@ -200,10 +214,43 @@ export default function SongsPage() {
     );
   }
 
+  // 同じ歌詞の行はレビューでもまとめて1つとして扱う。代表行への変更を
+  // 同じテキストを持つ全行に反映することで、重複行を個別にレビューし
+  // 直す必要がないようにする
+  function applyToLinesWithSameText(
+    arr: SongLine[],
+    text: string,
+    updater: (l: SongLine) => SongLine,
+  ): SongLine[] {
+    const norm = text.trim();
+    return arr.map((l) => (l.text.trim() === norm ? updater(l) : l));
+  }
+
   function handleToggleReviewed(index: number) {
-    const next = lines.map((l, i) =>
-      i === index ? { ...l, reviewed: !l.reviewed } : l,
+    const target = lines[index];
+    if (!target) return;
+    const nextReviewed = !target.reviewed;
+    const next = applyToLinesWithSameText(lines, target.text, (l) => ({
+      ...l,
+      reviewed: nextReviewed,
+    }));
+    setLines(next);
+    persistLines(next);
+  }
+
+  function handleReviewTranslationChange(index: number, text: string) {
+    setLines((prev) =>
+      prev.map((l, i) => (i === index ? { ...l, translation: text } : l)),
     );
+  }
+
+  function handleReviewTranslationBlur(index: number) {
+    const target = lines[index];
+    if (!target) return;
+    const next = applyToLinesWithSameText(lines, target.text, (l) => ({
+      ...l,
+      translation: target.translation,
+    }));
     setLines(next);
     persistLines(next);
   }
@@ -340,6 +387,20 @@ export default function SongsPage() {
               JA
             </Button>
           )}
+          {active && mode === "practice" && (
+            <Button
+              size="sm"
+              disabled={!allTranslated || startingReview || backfilling}
+              title={
+                allTranslated
+                  ? "Start review"
+                  : `Translate all lines first (${translatedCount}/${lines.length})`
+              }
+              onClick={handleStartReview}
+            >
+              {startingReview ? "Preparing review..." : "Start review →"}
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -393,7 +454,8 @@ export default function SongsPage() {
               Back to practice
             </button>
             <span className="text-[12.5px] font-semibold text-muted-foreground">
-              {lines.filter((l) => l.reviewed).length}/{lines.length} lines OK
+              {uniqueReviewLines.filter(({ line }) => line.reviewed).length}/
+              {uniqueReviewLines.length} lines OK
             </span>
           </div>
 
@@ -416,23 +478,28 @@ export default function SongsPage() {
           )}
 
           <div className="space-y-3">
-            {lines.map((line, i) => (
+            {uniqueReviewLines.map(({ line, index }, i) => {
+              const occurrences = lines.filter(
+                (l) => l.text.trim() === line.text.trim(),
+              ).length;
+              return (
               <div
-                key={i}
+                key={index}
                 className="rounded-[16px] p-4"
                 style={{ border: "1px solid var(--color-border-default)" }}
               >
                 <div className="mb-2.5 flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <span className="text-[11px] font-semibold text-muted-foreground">
-                      {i + 1}/{lines.length}
+                      {i + 1}/{uniqueReviewLines.length}
+                      {occurrences > 1 && ` · appears ${occurrences}×, updates all`}
                     </span>
                     <p className="text-[16px] font-bold leading-snug text-foreground">
                       {line.text}
                     </p>
                   </div>
                   <button
-                    onClick={() => handleToggleReviewed(i)}
+                    onClick={() => handleToggleReviewed(index)}
                     className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors"
                     style={{
                       border: `1px solid ${line.reviewed ? "var(--color-primary)" : "var(--color-border-default)"}`,
@@ -447,14 +514,8 @@ export default function SongsPage() {
 
                 <Textarea
                   value={line.translation}
-                  onChange={(e) =>
-                    setLines((prev) =>
-                      prev.map((l, j) =>
-                        j === i ? { ...l, translation: e.target.value } : l,
-                      ),
-                    )
-                  }
-                  onBlur={() => persistLines(lines)}
+                  onChange={(e) => handleReviewTranslationChange(index, e.target.value)}
+                  onBlur={() => handleReviewTranslationBlur(index)}
                   placeholder="このフレーズを日本語に訳してみましょう..."
                   rows={2}
                   className="mb-3 resize-none text-[14px]"
@@ -491,7 +552,8 @@ export default function SongsPage() {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : (
@@ -605,19 +667,10 @@ export default function SongsPage() {
                   className="resize-none text-[14px]"
                   style={{ background: "var(--color-surface)" }}
                 />
-                {lineIndex === lines.length - 1 && allTranslated && (
-                  <div className="mt-3.5 flex items-center justify-between gap-3">
-                    <span className="text-[12px] font-semibold" style={{ color: "var(--color-primary)" }}>
-                      All {lines.length} lines translated 🎉
-                    </span>
-                    <Button
-                      size="sm"
-                      disabled={startingReview || backfilling}
-                      onClick={handleStartReview}
-                    >
-                      {startingReview ? "Preparing review..." : "Start review →"}
-                    </Button>
-                  </div>
+                {allTranslated && (
+                  <p className="mt-3.5 text-[12px] font-semibold" style={{ color: "var(--color-primary)" }}>
+                    All {lines.length} lines translated 🎉 — use "Start review" above to continue.
+                  </p>
                 )}
               </div>
             )}
