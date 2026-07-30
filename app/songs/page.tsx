@@ -20,12 +20,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
+  DropdownMenuSeparator,
   Checkbox,
   Badge,
   toast,
@@ -41,6 +36,7 @@ import {
   ChevronRight,
   MoreVertical,
   Trash2,
+  Pencil,
   Check,
   ArrowLeft,
 } from "lucide-react";
@@ -446,6 +442,20 @@ export default function SongsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {showDoneView && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setForceEditDone(true);
+                        setMode("review");
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-2" />
+                      Fix a translation
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onClick={() => handleDeleteSong(active.id)}
@@ -482,18 +492,7 @@ export default function SongsPage() {
               <p className="truncate text-[15px] font-bold text-foreground">
                 {active.title}
               </p>
-              <div className="flex shrink-0 items-center gap-2">
-                <SongStatusBadge status="done" />
-                <button
-                  onClick={() => {
-                    setForceEditDone(true);
-                    setMode("review");
-                  }}
-                  className="text-[12px] font-semibold text-muted-foreground hover:underline"
-                >
-                  Fix a translation
-                </button>
-              </div>
+              <SongStatusBadge status="done" />
             </div>
 
             <YoutubePlayer
@@ -607,65 +606,74 @@ export default function SongsPage() {
           )}
 
           <div
-            className="min-h-0 flex-1 overflow-auto rounded-[14px]"
-            style={{ border: "1px solid var(--color-border-default)" }}
+            className="min-h-0 flex-1 overflow-y-auto rounded-[20px]"
+            style={{
+              border: "1px solid var(--color-border-default)",
+              background: "var(--color-surface)",
+            }}
           >
-            <Table className="table-fixed">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8">#</TableHead>
-                  <TableHead className="w-[42%]">Lyrics &amp; your translation</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="w-12 text-center">Reviewed</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {uniqueReviewLines.map(({ line, index }, i) => (
-                  <TableRow key={index}>
-                    <TableCell className="align-top text-[11.5px] text-muted-foreground">
-                      {i + 1}
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <p className="text-[13.5px] font-semibold leading-snug text-foreground">
-                        {line.text}
-                      </p>
-                      <Textarea
-                        value={line.translation}
-                        onChange={(e) =>
-                          handleReviewTranslationChange(index, e.target.value)
-                        }
-                        onBlur={() => handleReviewTranslationBlur(index)}
-                        placeholder="このフレーズを日本語に訳してみましょう..."
-                        rows={1}
-                        className="mt-1.5 resize-none text-[13px]"
-                        style={{ background: "var(--color-background)" }}
-                      />
-                    </TableCell>
-                    <TableCell className="align-top text-[12.5px] leading-relaxed">
-                      <p className="text-foreground">
-                        <span className="font-semibold text-muted-foreground">Official: </span>
-                        {line.hint || "—"}
-                      </p>
-                      {line.vocabNotes && (
-                        <p className="mt-1 text-muted-foreground">{line.vocabNotes}</p>
-                      )}
-                      {line.grammarNotes && (
-                        <p className="mt-1 text-muted-foreground">{line.grammarNotes}</p>
-                      )}
-                      {line.diffComment && (
-                        <p className="mt-1 text-muted-foreground">{line.diffComment}</p>
-                      )}
-                    </TableCell>
-                    <TableCell className="align-top text-center">
-                      <Checkbox
-                        checked={line.reviewed}
-                        onCheckedChange={() => handleToggleReviewed(index)}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div
+              className="sticky top-0 z-10 flex items-center gap-4 rounded-t-[20px] px-[18px] py-2.5 text-[11.5px] font-bold uppercase tracking-[0.04em] text-muted-foreground"
+              style={{ background: "var(--color-surface-subtle)" }}
+            >
+              <div className="w-[24px] shrink-0">#</div>
+              <div className="flex-1">Lyrics &amp; your translation</div>
+              <div className="w-[340px] shrink-0">Notes</div>
+              <div className="w-[70px] shrink-0 text-right">Reviewed</div>
+            </div>
+            <div className="rounded-b-[20px]">
+              {uniqueReviewLines.map(({ line, index }, i) => (
+                <div
+                  key={index}
+                  className="flex items-start gap-4 px-[18px] py-3.5"
+                  style={{
+                    borderTop: "1px solid var(--color-border-default)",
+                    borderLeft: `2px solid ${line.reviewed ? "var(--color-primary)" : "transparent"}`,
+                  }}
+                >
+                  <div className="w-[24px] shrink-0 pt-0.5 text-[13px] text-muted-foreground">
+                    {i + 1}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13.5px] font-semibold leading-snug text-foreground">
+                      {line.text}
+                    </p>
+                    <Textarea
+                      value={line.translation}
+                      onChange={(e) =>
+                        handleReviewTranslationChange(index, e.target.value)
+                      }
+                      onBlur={() => handleReviewTranslationBlur(index)}
+                      placeholder="このフレーズを日本語に訳してみましょう..."
+                      rows={1}
+                      className="mt-1.5 resize-none text-[13px]"
+                      style={{ background: "var(--color-background)" }}
+                    />
+                  </div>
+                  <div className="w-[340px] shrink-0 text-[12.5px] leading-relaxed">
+                    <p className="text-foreground">
+                      <span className="font-semibold text-muted-foreground">Official: </span>
+                      {line.hint || "—"}
+                    </p>
+                    {line.vocabNotes && (
+                      <p className="mt-1 text-muted-foreground">{line.vocabNotes}</p>
+                    )}
+                    {line.grammarNotes && (
+                      <p className="mt-1 text-muted-foreground">{line.grammarNotes}</p>
+                    )}
+                    {line.diffComment && (
+                      <p className="mt-1 text-muted-foreground">{line.diffComment}</p>
+                    )}
+                  </div>
+                  <div className="flex w-[70px] shrink-0 items-center justify-end pt-0.5">
+                    <Checkbox
+                      checked={line.reviewed}
+                      onCheckedChange={() => handleToggleReviewed(index)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       ) : (
