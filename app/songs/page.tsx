@@ -27,6 +27,7 @@ import {
   TableHead,
   TableCell,
   Checkbox,
+  Badge,
   toast,
 } from "@takaki/go-design-system";
 import {
@@ -41,7 +42,6 @@ import {
   MoreVertical,
   Trash2,
   Check,
-  Languages,
   ArrowLeft,
 } from "lucide-react";
 import {
@@ -58,6 +58,36 @@ import type { Song, SongLine } from "@/lib/types";
 import { YoutubePlayer, type YoutubePlayerHandle } from "@/components/youtube-player";
 
 type Mode = "practice" | "review";
+type SongStatus = "drafting" | "reviewing" | "done";
+
+function getSongStatus(lines: SongLine[]): SongStatus {
+  if (lines.length === 0) return "drafting";
+  const translated = lines.filter((l) => l.translation.trim().length > 0).length;
+  if (translated < lines.length) return "drafting";
+  const reviewed = lines.filter((l) => l.reviewed).length;
+  return reviewed < lines.length ? "reviewing" : "done";
+}
+
+function SongStatusBadge({ status }: { status: SongStatus }) {
+  if (status === "done") {
+    return (
+      <Badge style={{ background: "var(--color-primary)", color: "var(--color-surface)", border: "none" }}>
+        Done
+      </Badge>
+    );
+  }
+  if (status === "reviewing") {
+    return (
+      <Badge
+        variant="outline"
+        style={{ color: "var(--color-accent)", borderColor: "var(--color-accent)" }}
+      >
+        In review
+      </Badge>
+    );
+  }
+  return <Badge variant="secondary">Drafting</Badge>;
+}
 
 export default function SongsPage() {
   const [songs, setSongs] = useState<Song[]>([]);
@@ -75,7 +105,7 @@ export default function SongsPage() {
   const [creating, setCreating] = useState(false);
   const [fetchingMeta, setFetchingMeta] = useState(false);
   const [startingReview, setStartingReview] = useState(false);
-  const [showJaPopup, setShowJaPopup] = useState(false);
+  const [forceEditDone, setForceEditDone] = useState(false);
   const fetchedForVideoId = useRef<string | null>(null);
 
   async function handleVideoUrlBlur() {
@@ -112,6 +142,7 @@ export default function SongsPage() {
   useEffect(() => {
     setLineIndex(0);
     setMode("practice");
+    setForceEditDone(false);
   }, [active?.id]);
 
   useEffect(() => {
@@ -122,6 +153,8 @@ export default function SongsPage() {
   const translatedCount = lines.filter((l) => l.translation.trim().length > 0).length;
   const allTranslated = lines.length > 0 && translatedCount === lines.length;
   const allReviewed = lines.length > 0 && lines.every((l) => l.reviewed);
+  const activeStatus = active ? getSongStatus(lines) : null;
+  const showDoneView = activeStatus === "done" && !forceEditDone;
 
   // レビューでは同じ歌詞（サビの繰り返しなど）を重複表示せず、
   // 最初に出てきた行だけを代表として1つ表示する
@@ -389,18 +422,7 @@ export default function SongsPage() {
               </SelectContent>
             </Select>
           )}
-          {allReviewed && (
-            <Button
-              size="sm"
-              variant="outline"
-              title="View your translation"
-              onClick={() => setShowJaPopup(true)}
-            >
-              <Languages className="h-4 w-4 mr-1.5" />
-              JA
-            </Button>
-          )}
-          {active && mode === "practice" && (
+          {active && mode === "practice" && !showDoneView && (
             <Button
               size="sm"
               disabled={!allTranslated || startingReview || backfilling}
@@ -450,6 +472,87 @@ export default function SongsPage() {
           title="No songs yet"
           description='Add one with "Add song" — paste a YouTube link and the lyrics, then translate it line by line.'
         />
+      ) : showDoneView ? (
+        <div
+          className="grid min-h-0 flex-1 gap-[22px]"
+          style={{ gridTemplateColumns: "1fr 340px" }}
+        >
+          <div
+            className="flex h-full flex-col overflow-y-auto rounded-[20px] p-[22px]"
+            style={{
+              background: "var(--color-surface)",
+              border: "1px solid var(--color-border-default)",
+            }}
+          >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="truncate text-[15px] font-bold text-foreground">
+                {active.title}
+              </p>
+              <div className="flex shrink-0 items-center gap-2">
+                <SongStatusBadge status="done" />
+                <button
+                  onClick={() => {
+                    setForceEditDone(true);
+                    setMode("review");
+                  }}
+                  className="text-[12px] font-semibold text-muted-foreground hover:underline"
+                >
+                  Fix a translation
+                </button>
+              </div>
+            </div>
+
+            <YoutubePlayer
+              key={active.id}
+              ref={playerRef}
+              videoId={active.youtube_video_id}
+              onPlayingChange={setPlaying}
+            />
+
+            <div className="mt-3.5 flex items-center justify-center gap-3">
+              <button
+                onClick={() => playerRef.current?.seekBy(-10)}
+                className="flex h-9 w-9 items-center justify-center rounded-full"
+                style={{ border: "1px solid var(--color-border-default)", color: "var(--color-text-primary)" }}
+              >
+                <Rewind className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => (playing ? playerRef.current?.pause() : playerRef.current?.play())}
+                className="flex h-11 w-11 items-center justify-center rounded-full"
+                style={{ background: "var(--color-primary)", color: "var(--color-surface)" }}
+              >
+                {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+              </button>
+              <button
+                onClick={() => playerRef.current?.seekBy(10)}
+                className="flex h-9 w-9 items-center justify-center rounded-full"
+                style={{ border: "1px solid var(--color-border-default)", color: "var(--color-text-primary)" }}
+              >
+                <FastForward className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div
+            className="h-full overflow-y-auto rounded-[20px] p-2"
+            style={{
+              background: "var(--color-surface)",
+              border: "1px solid var(--color-border-default)",
+            }}
+          >
+            {lines.map((line, i) => (
+              <div key={i} className="mb-0.5 w-full rounded-[12px] px-3 py-2.5">
+                <p className="text-[13px] leading-snug text-foreground">{line.text}</p>
+                {line.translation && (
+                  <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
+                    {line.translation}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       ) : mode === "review" ? (
         <div
           className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[20px] p-[22px]"
@@ -597,9 +700,12 @@ export default function SongsPage() {
               border: "1px solid var(--color-border-default)",
             }}
           >
-            <p className="mb-2 truncate text-[15px] font-bold text-foreground">
-              {active.title}
-            </p>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="truncate text-[15px] font-bold text-foreground">
+                {active.title}
+              </p>
+              {activeStatus && <SongStatusBadge status={activeStatus} />}
+            </div>
 
             <YoutubePlayer
               key={active.id}
@@ -784,26 +890,6 @@ export default function SongsPage() {
               {creating ? "Adding..." : "Add"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showJaPopup} onOpenChange={setShowJaPopup}>
-        <DialogContent className="max-h-[80vh] max-w-[560px] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{active?.title} — Your translation</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            {active?.lines.map((line, i) => (
-              <div key={i}>
-                <p className="text-[14px] font-semibold leading-snug text-foreground">
-                  {line.text}
-                </p>
-                <p className="text-[13px] leading-snug text-muted-foreground">
-                  {line.translation}
-                </p>
-              </div>
-            ))}
-          </div>
         </DialogContent>
       </Dialog>
     </div>
