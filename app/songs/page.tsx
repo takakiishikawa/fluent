@@ -20,6 +20,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Checkbox,
   toast,
 } from "@takaki/go-design-system";
 import {
@@ -255,6 +262,12 @@ export default function SongsPage() {
     persistLines(next);
   }
 
+  function handleMarkAllReviewed() {
+    const next = lines.map((l) => ({ ...l, reviewed: true }));
+    setLines(next);
+    persistLines(next);
+  }
+
   function handleStartReview() {
     if (!active || !allTranslated) return;
     setMode("review");
@@ -439,7 +452,7 @@ export default function SongsPage() {
         />
       ) : mode === "review" ? (
         <div
-          className="min-h-0 flex-1 overflow-y-auto rounded-[20px] p-[22px]"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[20px] p-[22px]"
           style={{
             background: "var(--color-surface)",
             border: "1px solid var(--color-border-default)",
@@ -453,107 +466,122 @@ export default function SongsPage() {
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to practice
             </button>
-            <span className="text-[12.5px] font-semibold text-muted-foreground">
-              {uniqueReviewLines.filter(({ line }) => line.reviewed).length}/
-              {uniqueReviewLines.length} lines OK
-            </span>
+            <div className="flex items-center gap-3">
+              {!allReviewed && (
+                <button
+                  onClick={handleMarkAllReviewed}
+                  className="text-[12.5px] font-semibold"
+                  style={{ color: "var(--color-primary)" }}
+                >
+                  Mark everything as reviewed
+                </button>
+              )}
+              <span className="text-[12.5px] font-semibold text-muted-foreground">
+                {uniqueReviewLines.filter(({ line }) => line.reviewed).length}/
+                {uniqueReviewLines.length} reviewed
+              </span>
+            </div>
           </div>
 
           {generatingComments && (
             <p className="mb-4 px-1 text-[11.5px] text-muted-foreground">
               ✨ Generating comments comparing your translations with the
               official ones — they'll pop in below as they're ready. Feel
-              free to start marking lines OK in the meantime.
+              free to keep reviewing in the meantime.
             </p>
           )}
 
           {allReviewed && (
             <div
-              className="mb-4 flex items-center gap-2 rounded-[14px] px-4 py-3 text-[13.5px] font-semibold"
-              style={{ background: "var(--color-primary-soft)", color: "var(--color-primary)" }}
+              className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[14px] px-4 py-3"
+              style={{ background: "var(--color-primary-soft)" }}
             >
-              <Check className="h-4 w-4" strokeWidth={3} />
-              All lines reviewed — this song's translation is complete!
+              <span
+                className="flex items-center gap-2 text-[13.5px] font-semibold"
+                style={{ color: "var(--color-primary)" }}
+              >
+                <Check className="h-4 w-4" strokeWidth={3} />
+                Nice work — you've reviewed every line.
+              </span>
+              <Button size="sm" onClick={() => setMode("practice")}>
+                Finish review →
+              </Button>
             </div>
           )}
 
-          <div className="space-y-3">
-            {uniqueReviewLines.map(({ line, index }, i) => {
-              const occurrences = lines.filter(
-                (l) => l.text.trim() === line.text.trim(),
-              ).length;
-              return (
-              <div
-                key={index}
-                className="rounded-[16px] p-4"
-                style={{ border: "1px solid var(--color-border-default)" }}
-              >
-                <div className="mb-2.5 flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[11px] font-semibold text-muted-foreground">
-                      {i + 1}/{uniqueReviewLines.length}
-                      {occurrences > 1 && ` · appears ${occurrences}×, updates all`}
-                    </span>
-                    <p className="text-[16px] font-bold leading-snug text-foreground">
-                      {line.text}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleToggleReviewed(index)}
-                    className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors"
-                    style={{
-                      border: `1px solid ${line.reviewed ? "var(--color-primary)" : "var(--color-border-default)"}`,
-                      background: line.reviewed ? "var(--color-primary)" : "transparent",
-                      color: line.reviewed ? "var(--color-surface)" : "var(--color-text-secondary)",
-                    }}
-                  >
-                    {line.reviewed && <Check className="h-3 w-3" strokeWidth={3} />}
-                    {line.reviewed ? "OK" : "Mark as OK"}
-                  </button>
-                </div>
-
-                <Textarea
-                  value={line.translation}
-                  onChange={(e) => handleReviewTranslationChange(index, e.target.value)}
-                  onBlur={() => handleReviewTranslationBlur(index)}
-                  placeholder="このフレーズを日本語に訳してみましょう..."
-                  rows={2}
-                  className="mb-3 resize-none text-[14px]"
-                  style={{ background: "var(--color-background)" }}
-                />
-
-                <div className="space-y-1.5 text-[13px] leading-relaxed">
-                  <p>
-                    <span className="font-semibold text-muted-foreground">Official: </span>
-                    <span className="text-foreground">{line.hint || "—"}</span>
-                  </p>
-                  {line.vocabNotes && (
-                    <p>
-                      <span className="font-semibold text-muted-foreground">Vocab: </span>
-                      <span className="text-foreground">{line.vocabNotes}</span>
-                    </p>
-                  )}
-                  {line.grammarNotes && (
-                    <p>
-                      <span className="font-semibold text-muted-foreground">Grammar: </span>
-                      <span className="text-foreground">{line.grammarNotes}</span>
-                    </p>
-                  )}
-                  {line.diffComment && (
-                    <p
-                      className="mt-1.5 rounded-[10px] px-3 py-2"
-                      style={{ background: "var(--color-surface-subtle)" }}
-                    >
-                      <span className="font-semibold" style={{ color: "var(--color-accent)" }}>
-                        Comment:{" "}
-                      </span>
-                      <span className="text-foreground">{line.diffComment}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-              );
-            })}
+          <div
+            className="min-h-0 flex-1 overflow-auto rounded-[14px]"
+            style={{ border: "1px solid var(--color-border-default)" }}
+          >
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">#</TableHead>
+                  <TableHead>Lyrics</TableHead>
+                  <TableHead>Your translation</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="w-[100px] text-right">Reviewed</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {uniqueReviewLines.map(({ line, index }, i) => {
+                  const occurrences = lines.filter(
+                    (l) => l.text.trim() === line.text.trim(),
+                  ).length;
+                  const notes = [
+                    line.vocabNotes && `Vocab: ${line.vocabNotes}`,
+                    line.grammarNotes && `Grammar: ${line.grammarNotes}`,
+                    line.diffComment && `Comment: ${line.diffComment}`,
+                  ].filter(Boolean);
+                  return (
+                    <TableRow key={index}>
+                      <TableCell className="align-top text-[11.5px] text-muted-foreground">
+                        {i + 1}
+                      </TableCell>
+                      <TableCell className="align-top text-[13.5px] font-semibold text-foreground">
+                        {line.text}
+                        {occurrences > 1 && (
+                          <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">
+                            Repeats {occurrences}× — edits apply to all
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top min-w-[220px]">
+                        <Textarea
+                          value={line.translation}
+                          onChange={(e) =>
+                            handleReviewTranslationChange(index, e.target.value)
+                          }
+                          onBlur={() => handleReviewTranslationBlur(index)}
+                          placeholder="このフレーズを日本語に訳してみましょう..."
+                          rows={1}
+                          className="resize-none text-[13px]"
+                          style={{ background: "var(--color-background)" }}
+                        />
+                      </TableCell>
+                      <TableCell className="align-top min-w-[240px] max-w-[360px] text-[12.5px] leading-relaxed">
+                        <p className="text-foreground">
+                          <span className="font-semibold text-muted-foreground">Official: </span>
+                          {line.hint || "—"}
+                        </p>
+                        {notes.length > 0 && (
+                          <p className="mt-1 text-muted-foreground">{notes.join(" · ")}</p>
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top text-right">
+                        <label className="inline-flex cursor-pointer items-center justify-end gap-2 text-[12px] font-medium text-muted-foreground">
+                          {line.reviewed ? "Reviewed" : "Mark reviewed"}
+                          <Checkbox
+                            checked={line.reviewed}
+                            onCheckedChange={() => handleToggleReviewed(index)}
+                          />
+                        </label>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         </div>
       ) : (
