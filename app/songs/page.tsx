@@ -306,6 +306,14 @@ export default function SongsPage() {
     setMode("review");
   }
 
+  // レビューから抜けるときは、Fix a translation 経由で立てた
+  // forceEditDone を必ず解除する。これを忘れると、全行レビュー済みの曲で
+  // 再び Done の読み取り専用ビューに戻れなくなる
+  function handleExitReview() {
+    setForceEditDone(false);
+    setMode("practice");
+  }
+
   const [generatingComments, setGeneratingComments] = useState(false);
 
   // レビュー画面に入ったら、まだ「違いのコメント」がない行だけをバックグラウンドで
@@ -421,20 +429,6 @@ export default function SongsPage() {
                 ))}
               </SelectContent>
             </Select>
-          )}
-          {active && mode === "practice" && !showDoneView && (
-            <Button
-              size="sm"
-              disabled={!allTranslated || startingReview || backfilling}
-              title={
-                allTranslated
-                  ? "Start review"
-                  : `Translate all lines first (${translatedCount}/${lines.length})`
-              }
-              onClick={handleStartReview}
-            >
-              {startingReview ? "Preparing review..." : "Start review →"}
-            </Button>
           )}
           <Button
             size="sm"
@@ -563,7 +557,7 @@ export default function SongsPage() {
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <button
-              onClick={() => setMode("practice")}
+              onClick={handleExitReview}
               className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
@@ -606,7 +600,7 @@ export default function SongsPage() {
                 <Check className="h-4 w-4" strokeWidth={3} />
                 Nice work — you've reviewed every line.
               </span>
-              <Button size="sm" onClick={() => setMode("practice")}>
+              <Button size="sm" onClick={handleExitReview}>
                 Finish review →
               </Button>
             </div>
@@ -616,73 +610,60 @@ export default function SongsPage() {
             className="min-h-0 flex-1 overflow-auto rounded-[14px]"
             style={{ border: "1px solid var(--color-border-default)" }}
           >
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10">#</TableHead>
-                  <TableHead>Lyrics</TableHead>
-                  <TableHead>Your translation</TableHead>
+                  <TableHead className="w-8">#</TableHead>
+                  <TableHead className="w-[42%]">Lyrics &amp; your translation</TableHead>
                   <TableHead>Notes</TableHead>
-                  <TableHead className="w-[100px] text-right">Reviewed</TableHead>
+                  <TableHead className="w-12 text-center">Reviewed</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {uniqueReviewLines.map(({ line, index }, i) => {
-                  const occurrences = lines.filter(
-                    (l) => l.text.trim() === line.text.trim(),
-                  ).length;
-                  const notes = [
-                    line.vocabNotes && `Vocab: ${line.vocabNotes}`,
-                    line.grammarNotes && `Grammar: ${line.grammarNotes}`,
-                    line.diffComment && `Comment: ${line.diffComment}`,
-                  ].filter(Boolean);
-                  return (
-                    <TableRow key={index}>
-                      <TableCell className="align-top text-[11.5px] text-muted-foreground">
-                        {i + 1}
-                      </TableCell>
-                      <TableCell className="align-top text-[13.5px] font-semibold text-foreground">
+                {uniqueReviewLines.map(({ line, index }, i) => (
+                  <TableRow key={index}>
+                    <TableCell className="align-top text-[11.5px] text-muted-foreground">
+                      {i + 1}
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <p className="text-[13.5px] font-semibold leading-snug text-foreground">
                         {line.text}
-                        {occurrences > 1 && (
-                          <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">
-                            Repeats {occurrences}× — edits apply to all
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="align-top min-w-[220px]">
-                        <Textarea
-                          value={line.translation}
-                          onChange={(e) =>
-                            handleReviewTranslationChange(index, e.target.value)
-                          }
-                          onBlur={() => handleReviewTranslationBlur(index)}
-                          placeholder="このフレーズを日本語に訳してみましょう..."
-                          rows={1}
-                          className="resize-none text-[13px]"
-                          style={{ background: "var(--color-background)" }}
-                        />
-                      </TableCell>
-                      <TableCell className="align-top min-w-[240px] max-w-[360px] text-[12.5px] leading-relaxed">
-                        <p className="text-foreground">
-                          <span className="font-semibold text-muted-foreground">Official: </span>
-                          {line.hint || "—"}
-                        </p>
-                        {notes.length > 0 && (
-                          <p className="mt-1 text-muted-foreground">{notes.join(" · ")}</p>
-                        )}
-                      </TableCell>
-                      <TableCell className="align-top text-right">
-                        <label className="inline-flex cursor-pointer items-center justify-end gap-2 text-[12px] font-medium text-muted-foreground">
-                          {line.reviewed ? "Reviewed" : "Mark reviewed"}
-                          <Checkbox
-                            checked={line.reviewed}
-                            onCheckedChange={() => handleToggleReviewed(index)}
-                          />
-                        </label>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                      </p>
+                      <Textarea
+                        value={line.translation}
+                        onChange={(e) =>
+                          handleReviewTranslationChange(index, e.target.value)
+                        }
+                        onBlur={() => handleReviewTranslationBlur(index)}
+                        placeholder="このフレーズを日本語に訳してみましょう..."
+                        rows={1}
+                        className="mt-1.5 resize-none text-[13px]"
+                        style={{ background: "var(--color-background)" }}
+                      />
+                    </TableCell>
+                    <TableCell className="align-top text-[12.5px] leading-relaxed">
+                      <p className="text-foreground">
+                        <span className="font-semibold text-muted-foreground">Official: </span>
+                        {line.hint || "—"}
+                      </p>
+                      {line.vocabNotes && (
+                        <p className="mt-1 text-muted-foreground">{line.vocabNotes}</p>
+                      )}
+                      {line.grammarNotes && (
+                        <p className="mt-1 text-muted-foreground">{line.grammarNotes}</p>
+                      )}
+                      {line.diffComment && (
+                        <p className="mt-1 text-muted-foreground">{line.diffComment}</p>
+                      )}
+                    </TableCell>
+                    <TableCell className="align-top text-center">
+                      <Checkbox
+                        checked={line.reviewed}
+                        onCheckedChange={() => handleToggleReviewed(index)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
@@ -701,10 +682,24 @@ export default function SongsPage() {
             }}
           >
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="truncate text-[15px] font-bold text-foreground">
-                {active.title}
-              </p>
-              {activeStatus && <SongStatusBadge status={activeStatus} />}
+              <div className="flex min-w-0 items-center gap-2">
+                <p className="truncate text-[15px] font-bold text-foreground">
+                  {active.title}
+                </p>
+                {activeStatus && <SongStatusBadge status={activeStatus} />}
+              </div>
+              <Button
+                size="sm"
+                disabled={!allTranslated || startingReview || backfilling}
+                title={
+                  allTranslated
+                    ? "Start review"
+                    : `Translate all lines first (${translatedCount}/${lines.length})`
+                }
+                onClick={handleStartReview}
+              >
+                {startingReview ? "Preparing review..." : "Start review →"}
+              </Button>
             </div>
 
             <YoutubePlayer

@@ -93,7 +93,13 @@ export function ActivityHeatmap({
         >
           {cells.map((c, i) => {
             const total = c.repeating + c.shadowing;
-            const lv = c.future ? -1 : level(total);
+            const hasAnyActivity =
+              total > 0 || c.output > 0 || c.input > 0 || c.songs > 0;
+            const lv = c.future
+              ? -1
+              : hasAnyActivity
+                ? Math.max(1, level(total))
+                : 0;
             const parts: string[] = [];
             if (c.repeating > 0) parts.push(`リピート ${c.repeating}回`);
             if (c.shadowing > 0) parts.push(`シャドー ${c.shadowing}分`);
