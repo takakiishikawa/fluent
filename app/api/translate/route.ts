@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 
 // リピーティング画面の「日本語」ボタン用。会話の各行を日本語へ翻訳する。
 // Google Cloud Translation API v2（APIキー方式・TTS と同じ Google プロジェクト）。
+
+// レート制限・一時的な障害（429/5xx）はリトライで吸収する。
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 500;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function translateWithRetry(url: string, body: string) {
+  let lastRes: Response | null = null;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    if (res.ok || !RETRYABLE_STATUS.has(res.status)) return res;
+    lastRes = res;
+    if (attempt < MAX_RETRIES) {
+      await sleep(RETRY_DELAY_MS * (attempt + 1));
+    }
+  }
+  return lastRes as Response;
+}
+
 export async function POST(req: NextRequest) {
   const { texts } = (await req.json()) as { texts?: string[] };
 
@@ -18,13 +43,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const res = await fetch(
+  const res = await translateWithRetry(
     `https://translation.googleapis.com/language/translate/v2?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ q: texts, target: "ja", format: "text" }),
-    },
+    JSON.stringify({ q: texts, target: "ja", format: "text" }),
   );
 
   if (!res.ok) {
