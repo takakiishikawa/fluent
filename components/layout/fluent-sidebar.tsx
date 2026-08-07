@@ -22,13 +22,8 @@ import {
 import {
   Settings,
   ExternalLink,
-  Home,
-  Repeat,
   Headphones,
   PenLine,
-  Music,
-  BookOpen,
-  MessagesSquare,
   BarChart3,
   Languages,
   LogOut,
@@ -49,32 +44,20 @@ type NavItem = {
   languages?: Language[];
 };
 
-/** プライマリナビ（常時表示）— アイコンは NativeGo Concepts.dc.html の実アイコンに準拠 */
+/**
+ * プライマリナビ（常時表示）— アイコンは NativeGo Concepts.dc.html の実アイコンに準拠
+ * 2026-08-07: 種類が多かったため Ryan(Shadowing) / Output のみ表示に縮小。
+ * Dashboard・Repeating・Input・Songs・Phrases・List はナビから非表示（ルート自体は削除していない）。
+ */
 const primaryNavItems: NavItem[] = [
-  { href: "/", label: "Dashboard", icon: Home },
-  { href: "/repeating", label: "Repeating", icon: Repeat },
   { href: "/shadowing", label: "Shadowing", icon: Headphones },
   { href: "/output", label: "Output", icon: PenLine },
-  { href: "/library", label: "Input", icon: BookOpen, languages: ["en"] },
-  { href: "/songs", label: "Songs", icon: Music, languages: ["en"] },
-  { href: "/phrases", label: "Phrases", icon: MessagesSquare, languages: ["vi"] },
-  { href: "/list", label: "Library", icon: BookOpen, languages: ["vi"] },
 ];
 
 /** プロフィール行ホバーで出すポップオーバー内ナビ */
 const popoverNavItems: NavItem[] = [{ href: "/report", label: "Report", icon: BarChart3 }];
 
 function isActive(href: string, pathname: string) {
-  if (href === "/") return pathname === "/";
-  if (href === "/repeating") return pathname.startsWith("/repeating");
-  if (href === "/library")
-    return (
-      pathname === "/library" ||
-      pathname === "/grammar" ||
-      pathname === "/phrases" ||
-      pathname === "/texts"
-    );
-  if (href === "/list") return pathname === "/list";
   return pathname.startsWith(href);
 }
 
