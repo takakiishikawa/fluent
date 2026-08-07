@@ -230,10 +230,6 @@ export default async function HomePage() {
   const dayTotal = (l: RangeLog) =>
     l.grammar_done_count + l.expression_done_count + l.word_done_count;
 
-  const weeklyRepeating = rangeLogs
-    .filter((l) => l.practiced_at >= rangeStartStr)
-    .reduce((s, l) => s + dayTotal(l), 0);
-
   function parseDurToMin(dur: string | null | undefined): number {
     if (!dur) return 0;
     const parts = dur.split(":").map(Number);
@@ -300,12 +296,6 @@ export default async function HomePage() {
     lines: { reviewed: boolean }[];
     updated_at: string;
   }[];
-  const songsCompletedThisWeek = songs.filter(
-    (s) =>
-      s.updated_at >= weekAgoISO &&
-      s.lines.length > 0 &&
-      s.lines.every((l) => l.reviewed),
-  ).length;
   const songsByDate = new Map<string, number>();
   for (const s of songs) {
     if (s.lines.length === 0 || !s.lines.every((l) => l.reviewed)) {
@@ -319,9 +309,6 @@ export default async function HomePage() {
   const inputRows = (inputRoundsResult.data ?? []) as {
     rounds_updated_at: string;
   }[];
-  const weeklyInputRounds = inputRows.filter(
-    (r) => r.rounds_updated_at >= weekAgoISO,
-  ).length;
   const inputByDate = new Map<string, number>();
   for (const r of inputRows) {
     const d = r.rounds_updated_at.slice(0, 10);
@@ -332,19 +319,12 @@ export default async function HomePage() {
   const daysUntilFriday = 7 - daysSinceFriday;
 
   // ── This week's plan（設定した週間目標に対する達成判定） ──
-  const baselineRepeating = settings?.baseline_repeating ?? 500;
   const baselineShadowing = settings?.baseline_shadowing ?? 75;
   const baselineOutput = settings?.baseline_output ?? 2;
-  const baselineInput = settings?.baseline_input ?? 1;
-  const baselineSongs = settings?.baseline_songs ?? 2;
 
+  // 2026-08-07: 種類が多かったため This week's plan は Ryan(Shadowing) / Output のみ表示。
+  // Repeating・Input・Songs は非表示（集計ロジック自体は他箇所で使うため残置）。
   const planItems: PlanItem[] = [
-    {
-      href: "/repeating",
-      label: "Repeating",
-      detail: `${weeklyRepeating} / ${baselineRepeating} reps`,
-      done: weeklyRepeating >= baselineRepeating,
-    },
     {
       href: "/shadowing",
       label: isVi ? "Shadowing" : "Ryan",
@@ -357,24 +337,6 @@ export default async function HomePage() {
       detail: `${outputThisWeek} / ${baselineOutput} response${baselineOutput === 1 ? "" : "s"}`,
       done: outputThisWeek >= baselineOutput,
     },
-    {
-      href: isVi ? "/list" : "/library",
-      label: isVi ? "Library" : "Input",
-      detail: isVi
-        ? `${weeklyInputRounds} round${weeklyInputRounds === 1 ? "" : "s"}`
-        : `${weeklyInputRounds} / ${baselineInput} round${baselineInput === 1 ? "" : "s"}`,
-      done: isVi ? true : weeklyInputRounds >= baselineInput,
-    },
-    ...(isVi
-      ? []
-      : [
-          {
-            href: "/songs",
-            label: "Songs",
-            detail: `${songsCompletedThisWeek} / ${baselineSongs} song${baselineSongs === 1 ? "" : "s"}`,
-            done: songsCompletedThisWeek >= baselineSongs,
-          },
-        ]),
   ];
   const allPlanDone = planItems.every((p) => p.done);
 

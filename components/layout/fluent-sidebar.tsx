@@ -22,6 +22,7 @@ import {
 import {
   Settings,
   ExternalLink,
+  Home,
   Headphones,
   PenLine,
   BarChart3,
@@ -46,10 +47,11 @@ type NavItem = {
 
 /**
  * プライマリナビ（常時表示）— アイコンは NativeGo Concepts.dc.html の実アイコンに準拠
- * 2026-08-07: 種類が多かったため Ryan(Shadowing) / Output のみ表示に縮小。
- * Dashboard・Repeating・Input・Songs・Phrases・List はナビから非表示（ルート自体は削除していない）。
+ * 2026-08-07: 種類が多かったため Dashboard / Ryan(Shadowing) / Output のみ表示に縮小。
+ * Repeating・Input・Songs・Phrases・List はナビから非表示（ルート自体は削除していない）。
  */
 const primaryNavItems: NavItem[] = [
+  { href: "/", label: "Dashboard", icon: Home },
   { href: "/shadowing", label: "Shadowing", icon: Headphones },
   { href: "/output", label: "Output", icon: PenLine },
 ];
@@ -58,6 +60,7 @@ const primaryNavItems: NavItem[] = [
 const popoverNavItems: NavItem[] = [{ href: "/report", label: "Report", icon: BarChart3 }];
 
 function isActive(href: string, pathname: string) {
+  if (href === "/") return pathname === "/";
   return pathname.startsWith(href);
 }
 
